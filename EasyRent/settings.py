@@ -63,6 +63,8 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'EasyRent.wsgi.application'
 
+AUTH_USER_MODEL = 'users.User'
+
 
 if env.bool("USE_REMOTE"):
     DATABASES = {
