@@ -18,7 +18,6 @@ class BookingModelTests(TestCase):
             password="strong-test-password",
             first_name="Anna",
             last_name="Smith",
-            role=User.Role.LANDLORD,
         )
         cls.renter = User.objects.create_user(
             email="renter@example.com",
@@ -61,6 +60,73 @@ class BookingModelTests(TestCase):
         self.assertEqual(booking.renter, self.renter)
         self.assertEqual(booking.status, Booking.Status.PENDING)
         self.assertEqual(booking.number_of_nights, 3)
+
+    def test_manager_returns_bookings_by_status(self):
+        pending_booking = self.build_booking(status=Booking.Status.PENDING)
+        pending_booking.save()
+        confirmed_booking = self.build_booking(
+            start_date=date(2026, 8, 5),
+            end_date=date(2026, 8, 8),
+            status=Booking.Status.CONFIRMED,
+        )
+        confirmed_booking.save()
+
+        pending_bookings = Booking.objects.pending()
+        confirmed_bookings = Booking.objects.confirmed()
+
+        self.assertTrue(pending_bookings.filter(pk=pending_booking.pk).exists())
+        self.assertFalse(
+            pending_bookings.filter(pk=confirmed_booking.pk).exists()
+        )
+        self.assertTrue(
+            confirmed_bookings.filter(pk=confirmed_booking.pk).exists()
+        )
+
+    def test_manager_returns_only_blocking_bookings(self):
+        pending_booking = self.build_booking(status=Booking.Status.PENDING)
+        pending_booking.save()
+        confirmed_booking = self.build_booking(
+            start_date=date(2026, 8, 5),
+            end_date=date(2026, 8, 8),
+            status=Booking.Status.CONFIRMED,
+        )
+        confirmed_booking.save()
+        cancelled_booking = self.build_booking(
+            start_date=date(2026, 8, 9),
+            end_date=date(2026, 8, 12),
+            status=Booking.Status.CANCELLED,
+        )
+        cancelled_booking.save()
+
+        blocking_bookings = Booking.objects.blocking()
+
+        self.assertTrue(blocking_bookings.filter(pk=pending_booking.pk).exists())
+        self.assertTrue(blocking_bookings.filter(pk=confirmed_booking.pk).exists())
+        self.assertFalse(blocking_bookings.filter(pk=cancelled_booking.pk).exists())
+
+    def test_manager_returns_overlapping_bookings(self):
+        overlapping_booking = self.build_booking(
+            start_date=date(2026, 8, 1),
+            end_date=date(2026, 8, 4),
+        )
+        overlapping_booking.save()
+        non_overlapping_booking = self.build_booking(
+            start_date=date(2026, 8, 5),
+            end_date=date(2026, 8, 8),
+        )
+        non_overlapping_booking.save()
+
+        overlapping_bookings = Booking.objects.overlapping(
+            start_date=date(2026, 8, 3),
+            end_date=date(2026, 8, 5),
+        )
+
+        self.assertTrue(
+            overlapping_bookings.filter(pk=overlapping_booking.pk).exists()
+        )
+        self.assertFalse(
+            overlapping_bookings.filter(pk=non_overlapping_booking.pk).exists()
+        )
 
     def test_end_date_must_be_after_start_date(self):
         booking = self.build_booking(

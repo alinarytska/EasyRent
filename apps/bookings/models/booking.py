@@ -5,8 +5,15 @@ from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
+from apps.common.models import BaseModel
 
-class Booking(models.Model):
+from .manager import BookingManager
+
+
+MIN_BOOKING_PRICE = Decimal("0.01")
+
+
+class Booking(BaseModel):
     class Status(models.TextChoices):
         PENDING = "pending", _("Pending")
         CONFIRMED = "confirmed", _("Confirmed")
@@ -30,14 +37,18 @@ class Booking(models.Model):
         _("price per night"),
         max_digits=10,
         decimal_places=2,
-        validators=[MinValueValidator(Decimal("0.01"))],
+        validators=[
+            MinValueValidator(MIN_BOOKING_PRICE),
+        ],
         editable=False,
     )
     total_price = models.DecimalField(
         _("total price"),
         max_digits=12,
         decimal_places=2,
-        validators=[MinValueValidator(Decimal("0.01"))],
+        validators=[
+            MinValueValidator(MIN_BOOKING_PRICE),
+        ],
         editable=False,
     )
     status = models.CharField(
@@ -47,12 +58,8 @@ class Booking(models.Model):
         default=Status.PENDING,
         db_index=True,
     )
-    created_at = models.DateTimeField(
-        _("created at"),
-        auto_now_add=True,
-        db_index=True,
-    )
-    updated_at = models.DateTimeField(_("updated at"), auto_now=True)
+
+    objects = BookingManager()
 
     class Meta:
         ordering = ("-created_at",)
@@ -62,6 +69,14 @@ class Booking(models.Model):
             models.CheckConstraint(
                 condition=models.Q(end_date__gt=models.F("start_date")),
                 name="booking_end_after_start",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(price_per_night__gte=MIN_BOOKING_PRICE),
+                name="booking_price_per_night_min",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(total_price__gte=MIN_BOOKING_PRICE),
+                name="booking_total_price_min",
             ),
         )
 
