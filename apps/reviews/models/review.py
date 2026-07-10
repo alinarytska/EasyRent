@@ -2,8 +2,10 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
+from apps.common.models import BaseModel
 
-class Review(models.Model):
+
+class Review(BaseModel):
     booking = models.OneToOneField(
         "bookings.Booking",
         on_delete=models.PROTECT,
@@ -15,12 +17,6 @@ class Review(models.Model):
         db_index=True,
     )
     comment = models.TextField(_("comment"), max_length=2000, blank=True)
-    created_at = models.DateTimeField(
-        _("created at"),
-        auto_now_add=True,
-        db_index=True,
-    )
-    updated_at = models.DateTimeField(_("updated at"), auto_now=True)
 
     class Meta:
         ordering = ("-created_at",)
