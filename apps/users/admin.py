@@ -12,12 +12,13 @@ class UserAdmin(BaseUserAdmin):
         "first_name",
         "last_name",
         "phone_number",
-        "role",
+        "is_renter",
+        "is_landlord",
         "is_staff",
         "is_active",
     )
     list_filter = (
-        "role",
+        "groups",
         "is_staff",
         "is_superuser",
         "is_active",
@@ -28,7 +29,7 @@ class UserAdmin(BaseUserAdmin):
         (None, {"fields": ("email", "password")}),
         (
             "Personal information",
-            {"fields": ("first_name", "last_name", "phone_number", "role")},
+            {"fields": ("first_name", "last_name", "phone_number")},
         ),
         (
             "Permissions",
@@ -54,10 +55,17 @@ class UserAdmin(BaseUserAdmin):
                     "first_name",
                     "last_name",
                     "phone_number",
-                    "role",
                     "password1",
                     "password2",
                 ),
             },
         ),
     )
+
+    @admin.display(boolean=True, description="Renter")
+    def is_renter(self, obj):
+        return obj.can_rent
+
+    @admin.display(boolean=True, description="Landlord")
+    def is_landlord(self, obj):
+        return obj.can_create_listing

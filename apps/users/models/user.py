@@ -7,9 +7,8 @@ from apps.users.validators import phone_number_validator
 
 
 class User(AbstractUser):
-    class Role(models.TextChoices):
-        RENTER = "renter", _("Renter")
-        LANDLORD = "landlord", _("Landlord")
+    RENTERS_GROUP = "Renters"
+    LANDLORDS_GROUP = "Landlords"
 
     username = None
 
@@ -22,14 +21,6 @@ class User(AbstractUser):
         blank=True,
         validators=[phone_number_validator],
     )
-    role = models.CharField(
-        _("role"),
-        max_length=20,
-        choices=Role.choices,
-        default=Role.RENTER,
-        db_index=True,
-    )
-
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["first_name", "last_name"]
 
@@ -42,3 +33,17 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.email
+
+    def belongs_to_group(self, group_name):
+        if not self.pk:
+            return False
+
+        return self.groups.filter(name=group_name).exists()
+
+    @property
+    def can_rent(self):
+        return self.belongs_to_group(self.RENTERS_GROUP)
+
+    @property
+    def can_create_listing(self):
+        return self.belongs_to_group(self.LANDLORDS_GROUP)

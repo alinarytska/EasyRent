@@ -1,3 +1,4 @@
+from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 
@@ -17,7 +18,6 @@ class UserManagerTests(TestCase):
         self.assertEqual(user.email, "renter@example.com")
         self.assertEqual(user.last_name, "Smith")
         self.assertEqual(user.phone_number, "+491234567890")
-        self.assertEqual(user.role, User.Role.RENTER)
         self.assertTrue(user.check_password("strong-test-password"))
         self.assertFalse(user.is_staff)
         self.assertFalse(user.is_superuser)
@@ -90,3 +90,54 @@ class UserManagerTests(TestCase):
         )
 
         self.assertEqual(first_user.phone_number, second_user.phone_number)
+
+    def test_user_without_groups_has_no_rental_permissions(self):
+        user = User.objects.create_user(
+            email="user-without-groups@example.com",
+            password="strong-test-password",
+            first_name="Anna",
+            last_name="Smith",
+        )
+
+        self.assertFalse(user.can_rent)
+        self.assertFalse(user.can_create_listing)
+
+    def test_renters_group_allows_user_to_rent(self):
+        renters_group = Group.objects.create(name=User.RENTERS_GROUP)
+        user = User.objects.create_user(
+            email="renter@example.com",
+            password="strong-test-password",
+            first_name="Anna",
+            last_name="Smith",
+        )
+        user.groups.add(renters_group)
+
+        self.assertTrue(user.can_rent)
+        self.assertFalse(user.can_create_listing)
+
+    def test_landlords_group_allows_user_to_create_listing(self):
+        landlords_group = Group.objects.create(name=User.LANDLORDS_GROUP)
+        user = User.objects.create_user(
+            email="landlord@example.com",
+            password="strong-test-password",
+            first_name="Anna",
+            last_name="Smith",
+        )
+        user.groups.add(landlords_group)
+
+        self.assertFalse(user.can_rent)
+        self.assertTrue(user.can_create_listing)
+
+    def test_user_can_belong_to_both_rental_groups(self):
+        renters_group = Group.objects.create(name=User.RENTERS_GROUP)
+        landlords_group = Group.objects.create(name=User.LANDLORDS_GROUP)
+        user = User.objects.create_user(
+            email="both@example.com",
+            password="strong-test-password",
+            first_name="Anna",
+            last_name="Smith",
+        )
+        user.groups.add(renters_group, landlords_group)
+
+        self.assertTrue(user.can_rent)
+        self.assertTrue(user.can_create_listing)

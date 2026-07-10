@@ -18,7 +18,6 @@ class ViewHistoryModelTests(TestCase):
             password="strong-test-password",
             first_name="Anna",
             last_name="Smith",
-            role=User.Role.LANDLORD,
         )
         cls.viewer = User.objects.create_user(
             email="renter@example.com",
