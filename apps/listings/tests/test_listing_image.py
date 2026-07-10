@@ -1,9 +1,12 @@
 from decimal import Decimal
 from pathlib import Path
 
+from django.core.exceptions import ValidationError
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 
 from apps.listings.models import Listing, ListingImage
+from apps.listings.validators import MAX_LISTING_IMAGE_SIZE_BYTES
 from apps.users.models import User
 
 
@@ -15,7 +18,6 @@ class ListingImageModelTests(TestCase):
             password="strong-test-password",
             first_name="Anna",
             last_name="Smith",
-            role=User.Role.LANDLORD,
         )
         cls.listing = Listing.objects.create(
             owner=cls.owner,
@@ -49,6 +51,33 @@ class ListingImageModelTests(TestCase):
 
         self.assertFalse(listing_image.is_primary)
         self.assertEqual(listing_image.position, 0)
+
+    def test_listing_image_accepts_file_with_allowed_size(self):
+        image = SimpleUploadedFile(
+            "allowed.jpg",
+            b"x" * MAX_LISTING_IMAGE_SIZE_BYTES,
+            content_type="image/jpeg",
+        )
+        listing_image = ListingImage(
+            listing=self.listing,
+            image=image,
+        )
+
+        listing_image.full_clean()
+
+    def test_listing_image_file_must_not_exceed_max_size(self):
+        image = SimpleUploadedFile(
+            "too-large.jpg",
+            b"x" * (MAX_LISTING_IMAGE_SIZE_BYTES + 1),
+            content_type="image/jpeg",
+        )
+        listing_image = ListingImage(
+            listing=self.listing,
+            image=image,
+        )
+
+        with self.assertRaises(ValidationError):
+            listing_image.full_clean()
 
     def test_primary_image_is_ordered_first(self):
         last_image = ListingImage.objects.create(

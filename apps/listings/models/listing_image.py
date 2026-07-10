@@ -4,6 +4,8 @@ from uuid import uuid4
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
+from apps.listings.validators import validate_listing_image_size
+
 
 def listing_image_upload_path(instance, filename):
     extension = Path(filename).suffix.lower()
@@ -21,6 +23,7 @@ class ListingImage(models.Model):
     image = models.ImageField(
         _("image"),
         upload_to=listing_image_upload_path,
+        validators=[validate_listing_image_size],
     )
     is_primary = models.BooleanField(
         _("primary image"),
