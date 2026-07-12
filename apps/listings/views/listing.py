@@ -1,5 +1,5 @@
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.filters import SearchFilter
+from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework import viewsets
 
 from apps.listings.filters import ListingFilter
@@ -9,7 +9,7 @@ from apps.listings.serializers import ListingSerializer
 
 class ListingViewSet(viewsets.ModelViewSet):
     serializer_class = ListingSerializer
-    filter_backends = (DjangoFilterBackend, SearchFilter)
+    filter_backends = (DjangoFilterBackend, SearchFilter, OrderingFilter)
     filterset_class = ListingFilter
     search_fields = (
         "title",
@@ -18,6 +18,12 @@ class ListingViewSet(viewsets.ModelViewSet):
         "district",
         "street",
     )
+    ordering_fields = (
+        "price_per_night",
+        "rooms",
+        "created_at",
+    )
+    ordering = ("-created_at",)
 
     def get_queryset(self):
         return (
