@@ -24,6 +24,7 @@ class ListingViewSet(viewsets.ModelViewSet):
     ordering_fields = (
         "price_per_night",
         "rooms",
+        "views_count",
         "created_at",
     )
     ordering = ("-created_at",)
