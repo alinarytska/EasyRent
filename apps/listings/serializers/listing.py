@@ -8,6 +8,7 @@ class ListingSerializer(serializers.ModelSerializer):
     owner = serializers.PrimaryKeyRelatedField(read_only=True)
     owner_email = serializers.EmailField(source="owner.email", read_only=True)
     images = ListingImageSerializer(many=True, read_only=True)
+    views_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Listing
@@ -27,6 +28,7 @@ class ListingSerializer(serializers.ModelSerializer):
             "house_number",
             "is_active",
             "images",
+            "views_count",
             "created_at",
             "updated_at",
         )
@@ -35,6 +37,7 @@ class ListingSerializer(serializers.ModelSerializer):
             "owner",
             "owner_email",
             "images",
+            "views_count",
             "created_at",
             "updated_at",
         )

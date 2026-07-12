@@ -1,3 +1,4 @@
+from django.db.models import Count
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
@@ -31,6 +32,7 @@ class ListingViewSet(viewsets.ModelViewSet):
         return (
             Listing.objects.select_related("owner")
             .prefetch_related("images")
+            .annotate(views_count=Count("view_history"))
             .all()
         )
 
@@ -42,6 +44,19 @@ class ListingViewSet(viewsets.ModelViewSet):
         queryset = self.filter_queryset(
             self.get_queryset().by_owner(request.user),
         )
+        page = self.paginate_queryset(queryset)
+
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+
+        return Response(serializer.data)
+
+    @action(detail=False, methods=("get",), url_path="popular")
+    def popular(self, request):
+        queryset = self.get_queryset().order_by("-views_count", "-created_at")
         page = self.paginate_queryset(queryset)
 
         if page is not None:
