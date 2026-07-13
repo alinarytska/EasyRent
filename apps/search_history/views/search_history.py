@@ -1,9 +1,12 @@
 from django.db.models import Count
 from drf_spectacular.utils import extend_schema
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from rest_framework.decorators import action
+from rest_framework.filters import OrderingFilter
 from rest_framework.response import Response
 
+from apps.search_history.filters import SearchHistoryFilter
 from apps.search_history.models import SearchHistory
 from apps.search_history.serializers import (
     PopularSearchQuerySerializer,
@@ -13,6 +16,14 @@ from apps.search_history.serializers import (
 
 class SearchHistoryViewSet(viewsets.ModelViewSet):
     serializer_class = SearchHistorySerializer
+    filter_backends = (DjangoFilterBackend, OrderingFilter)
+    filterset_class = SearchHistoryFilter
+    ordering_fields = (
+        "query",
+        "created_at",
+        "id",
+    )
+    ordering = ("-created_at", "-id")
 
     def get_queryset(self):
         if not self.request.user.is_authenticated:
