@@ -1,17 +1,28 @@
 from django.db.models import Count
 from drf_spectacular.utils import extend_schema
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.filters import OrderingFilter
 from rest_framework.response import Response
 
 from apps.listings.models import Listing
 from apps.listings.serializers import ListingSerializer
+from apps.view_history.filters import ViewHistoryFilter
 from apps.view_history.models import ViewHistory
 from apps.view_history.serializers import ViewHistorySerializer
 
 
 class ViewHistoryViewSet(viewsets.ModelViewSet):
     serializer_class = ViewHistorySerializer
+    filter_backends = (DjangoFilterBackend, OrderingFilter)
+    filterset_class = ViewHistoryFilter
+    ordering_fields = (
+        "viewed_at",
+        "listing",
+        "id",
+    )
+    ordering = ("-viewed_at", "-id")
 
     def get_queryset(self):
         queryset = ViewHistory.objects.select_related("user", "listing")
