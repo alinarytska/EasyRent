@@ -18,3 +18,8 @@ class SearchHistorySerializer(serializers.ModelSerializer):
             "created_at",
         )
         read_only_fields = ("id", "user", "user_email", "created_at")
+
+
+class PopularSearchQuerySerializer(serializers.Serializer):
+    query = serializers.CharField()
+    search_count = serializers.IntegerField()
