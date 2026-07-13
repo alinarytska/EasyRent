@@ -10,6 +10,14 @@ class BookingSerializer(serializers.ModelSerializer):
         queryset=Listing.objects.active(),
     )
     listing_title = serializers.CharField(source="listing.title", read_only=True)
+    listing_owner = serializers.IntegerField(
+        source="listing.owner_id",
+        read_only=True,
+    )
+    listing_owner_email = serializers.EmailField(
+        source="listing.owner.email",
+        read_only=True,
+    )
     renter = serializers.PrimaryKeyRelatedField(read_only=True)
     renter_email = serializers.EmailField(source="renter.email", read_only=True)
     number_of_nights = serializers.IntegerField(read_only=True)
@@ -20,6 +28,8 @@ class BookingSerializer(serializers.ModelSerializer):
             "id",
             "listing",
             "listing_title",
+            "listing_owner",
+            "listing_owner_email",
             "renter",
             "renter_email",
             "start_date",
@@ -34,6 +44,8 @@ class BookingSerializer(serializers.ModelSerializer):
         read_only_fields = (
             "id",
             "listing_title",
+            "listing_owner",
+            "listing_owner_email",
             "renter",
             "renter_email",
             "number_of_nights",
