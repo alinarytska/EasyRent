@@ -1,7 +1,8 @@
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from django.contrib.auth.models import Group
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -105,6 +106,58 @@ class BookingPermissionAPITests(APITestCase):
             Booking.objects.filter(renter=self.user_without_renter_group).exists()
         )
 
+    def test_user_cannot_book_own_listing(self):
+        own_listing = self.create_listing(
+            owner=self.renter,
+            title="Own apartment",
+        )
+        self.client.force_authenticate(user=self.renter)
+
+        response = self.client.post(
+            "/api/bookings/",
+            data=self.build_booking_payload(listing=own_listing.id),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("listing", response.data)
+        self.assertFalse(
+            Booking.objects.filter(
+                listing=own_listing,
+                renter=self.renter,
+            ).exists()
+        )
+
+    def test_user_cannot_create_booking_in_the_past(self):
+        past_start_date = timezone.localdate() - timedelta(days=2)
+        past_end_date = timezone.localdate() - timedelta(days=1)
+        self.client.force_authenticate(user=self.renter)
+
+        response = self.client.post(
+            "/api/bookings/",
+            data=self.build_booking_payload(
+                start_date=past_start_date.isoformat(),
+                end_date=past_end_date.isoformat(),
+            ),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("start_date", response.data)
+
+    def test_user_cannot_create_overlapping_booking(self):
+        self.create_booking(status=Booking.Status.CONFIRMED)
+        self.client.force_authenticate(user=self.renter)
+
+        response = self.client.post(
+            "/api/bookings/",
+            data=self.build_booking_payload(),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(Booking.objects.count(), 1)
+
     def test_listing_owner_can_update_booking(self):
         booking = self.create_booking()
         self.client.force_authenticate(user=self.landlord)
@@ -157,3 +210,122 @@ class BookingPermissionAPITests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertTrue(Booking.objects.filter(pk=booking.pk).exists())
+
+    def test_listing_owner_can_confirm_pending_booking(self):
+        booking = self.create_booking(status=Booking.Status.PENDING)
+        self.client.force_authenticate(user=self.landlord)
+
+        response = self.client.post(f"/api/bookings/{booking.id}/confirm/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["status"], Booking.Status.CONFIRMED)
+
+        booking.refresh_from_db()
+
+        self.assertEqual(booking.status, Booking.Status.CONFIRMED)
+
+    def test_renter_cannot_confirm_booking(self):
+        booking = self.create_booking(status=Booking.Status.PENDING)
+        self.client.force_authenticate(user=self.renter)
+
+        response = self.client.post(f"/api/bookings/{booking.id}/confirm/")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        booking.refresh_from_db()
+
+        self.assertEqual(booking.status, Booking.Status.PENDING)
+
+    def test_confirm_requires_pending_booking(self):
+        booking = self.create_booking(status=Booking.Status.CANCELLED)
+        self.client.force_authenticate(user=self.landlord)
+
+        response = self.client.post(f"/api/bookings/{booking.id}/confirm/")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("status", response.data)
+
+        booking.refresh_from_db()
+
+        self.assertEqual(booking.status, Booking.Status.CANCELLED)
+
+    def test_listing_owner_can_reject_pending_booking(self):
+        booking = self.create_booking(status=Booking.Status.PENDING)
+        self.client.force_authenticate(user=self.landlord)
+
+        response = self.client.post(f"/api/bookings/{booking.id}/reject/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["status"], Booking.Status.REJECTED)
+
+        booking.refresh_from_db()
+
+        self.assertEqual(booking.status, Booking.Status.REJECTED)
+
+    def test_renter_cannot_reject_booking(self):
+        booking = self.create_booking(status=Booking.Status.PENDING)
+        self.client.force_authenticate(user=self.renter)
+
+        response = self.client.post(f"/api/bookings/{booking.id}/reject/")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        booking.refresh_from_db()
+
+        self.assertEqual(booking.status, Booking.Status.PENDING)
+
+    def test_renter_can_cancel_own_pending_booking(self):
+        booking = self.create_booking(status=Booking.Status.PENDING)
+        self.client.force_authenticate(user=self.renter)
+
+        response = self.client.post(f"/api/bookings/{booking.id}/cancel/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["status"], Booking.Status.CANCELLED)
+
+        booking.refresh_from_db()
+
+        self.assertEqual(booking.status, Booking.Status.CANCELLED)
+
+    def test_renter_cannot_cancel_booking_too_late(self):
+        booking = self.create_booking(
+            status=Booking.Status.PENDING,
+            start_date=timezone.localdate(),
+            end_date=timezone.localdate() + timedelta(days=3),
+        )
+        self.client.force_authenticate(user=self.renter)
+
+        response = self.client.post(f"/api/bookings/{booking.id}/cancel/")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("status", response.data)
+
+        booking.refresh_from_db()
+
+        self.assertEqual(booking.status, Booking.Status.PENDING)
+
+    def test_listing_owner_can_cancel_booking(self):
+        booking = self.create_booking(status=Booking.Status.CONFIRMED)
+        self.client.force_authenticate(user=self.landlord)
+
+        response = self.client.post(f"/api/bookings/{booking.id}/cancel/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["status"], Booking.Status.CANCELLED)
+
+        booking.refresh_from_db()
+
+        self.assertEqual(booking.status, Booking.Status.CANCELLED)
+
+    def test_cancel_requires_pending_or_confirmed_booking(self):
+        booking = self.create_booking(status=Booking.Status.COMPLETED)
+        self.client.force_authenticate(user=self.renter)
+
+        response = self.client.post(f"/api/bookings/{booking.id}/cancel/")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("status", response.data)
+
+        booking.refresh_from_db()
+
+        self.assertEqual(booking.status, Booking.Status.COMPLETED)

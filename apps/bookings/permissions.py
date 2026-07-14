@@ -18,4 +18,13 @@ class BookingPermission(BasePermission):
         if request.method in SAFE_METHODS:
             return True
 
+        if view.action in ("confirm", "reject"):
+            return obj.listing.owner_id == request.user.id
+
+        if view.action == "cancel":
+            return (
+                obj.renter_id == request.user.id
+                or obj.listing.owner_id == request.user.id
+            )
+
         return obj.listing.owner_id == request.user.id
