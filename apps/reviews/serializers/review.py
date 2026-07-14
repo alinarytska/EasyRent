@@ -36,3 +36,32 @@ class ReviewSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         )
+
+    def validate(self, attrs):
+        request = self.context.get("request")
+        booking = attrs.get(
+            "booking",
+            self.instance.booking if self.instance else None,
+        )
+
+        if self.instance and "booking" in attrs:
+            if booking != self.instance.booking:
+                raise serializers.ValidationError(
+                    {
+                        "booking": (
+                            "Booking cannot be changed after review creation."
+                        )
+                    }
+                )
+
+        if not self.instance and request:
+            if booking.renter_id != request.user.id:
+                raise serializers.ValidationError(
+                    {
+                        "booking": (
+                            "You can review only your own completed bookings."
+                        )
+                    }
+                )
+
+        return attrs

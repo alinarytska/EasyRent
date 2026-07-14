@@ -7,11 +7,13 @@ from rest_framework.response import Response
 
 from apps.reviews.filters import ReviewFilter
 from apps.reviews.models import Review
+from apps.reviews.permissions import ReviewPermission
 from apps.reviews.serializers import ReviewSerializer
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
     serializer_class = ReviewSerializer
+    permission_classes = (ReviewPermission,)
     filter_backends = (DjangoFilterBackend, OrderingFilter)
     filterset_class = ReviewFilter
     ordering_fields = (
