@@ -1,13 +1,16 @@
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.filters import OrderingFilter
 from rest_framework import viewsets
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.filters import OrderingFilter
 
 from apps.listings.models import ListingImage
+from apps.listings.permissions import ListingImagePermission
 from apps.listings.serializers import ListingImageSerializer
 
 
 class ListingImageViewSet(viewsets.ModelViewSet):
     serializer_class = ListingImageSerializer
+    permission_classes = (ListingImagePermission,)
     filter_backends = (DjangoFilterBackend, OrderingFilter)
     filterset_fields = (
         "listing",
@@ -28,3 +31,13 @@ class ListingImageViewSet(viewsets.ModelViewSet):
             "listing",
             "listing__owner",
         ).all()
+
+    def perform_create(self, serializer):
+        listing = serializer.validated_data["listing"]
+
+        if listing.owner_id != self.request.user.id:
+            raise PermissionDenied(
+                "You can manage images only for your own listings."
+            )
+
+        serializer.save()

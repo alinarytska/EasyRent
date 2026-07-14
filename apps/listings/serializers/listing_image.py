@@ -31,3 +31,16 @@ class ListingImageSerializer(serializers.ModelSerializer):
             "listing_owner_email",
             "uploaded_at",
         )
+
+    def validate(self, attrs):
+        if self.instance and "listing" in attrs:
+            if attrs["listing"] != self.instance.listing:
+                raise serializers.ValidationError(
+                    {
+                        "listing": (
+                            "Listing cannot be changed after image creation."
+                        )
+                    }
+                )
+
+        return attrs
