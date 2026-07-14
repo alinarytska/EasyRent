@@ -7,11 +7,13 @@ from rest_framework import viewsets
 
 from apps.listings.filters import ListingFilter
 from apps.listings.models import Listing
+from apps.listings.permissions import ListingPermission
 from apps.listings.serializers import ListingSerializer
 
 
 class ListingViewSet(viewsets.ModelViewSet):
     serializer_class = ListingSerializer
+    permission_classes = (ListingPermission,)
     filter_backends = (DjangoFilterBackend, SearchFilter, OrderingFilter)
     filterset_class = ListingFilter
     search_fields = (
