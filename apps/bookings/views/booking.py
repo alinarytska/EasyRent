@@ -8,12 +8,14 @@ from rest_framework.response import Response
 
 from apps.bookings.filters import BookingFilter
 from apps.bookings.models import Booking
+from apps.bookings.permissions import BookingPermission
 from apps.bookings.serializers import BookingSerializer
 from apps.bookings.services import calculate_booking_prices
 
 
 class BookingViewSet(viewsets.ModelViewSet):
     serializer_class = BookingSerializer
+    permission_classes = (BookingPermission,)
     filter_backends = (DjangoFilterBackend, OrderingFilter)
     filterset_class = BookingFilter
     ordering_fields = (
