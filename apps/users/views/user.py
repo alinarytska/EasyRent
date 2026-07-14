@@ -5,7 +5,11 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from apps.users.models import User
-from apps.users.serializers import UserRegistrationSerializer, UserSerializer
+from apps.users.serializers import (
+    UserProfileUpdateSerializer,
+    UserRegistrationSerializer,
+    UserSerializer,
+)
 
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
@@ -23,8 +27,25 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
 
         return queryset.filter(pk=user.pk)
 
-    @action(detail=False, methods=("get",), url_path="me")
+    @extend_schema(methods=("GET",), responses=UserSerializer)
+    @extend_schema(
+        methods=("PATCH",),
+        request=UserProfileUpdateSerializer,
+        responses=UserSerializer,
+    )
+    @action(detail=False, methods=("get", "patch"), url_path="me")
     def me(self, request):
+        if request.method == "PATCH":
+            serializer = UserProfileUpdateSerializer(
+                request.user,
+                data=request.data,
+                partial=True,
+            )
+            serializer.is_valid(raise_exception=True)
+            user = serializer.save()
+            response_serializer = self.get_serializer(user)
+            return Response(response_serializer.data)
+
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
 

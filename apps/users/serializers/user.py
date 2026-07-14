@@ -69,3 +69,13 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             password=password,
             **validated_data,
         )
+
+
+class UserProfileUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = (
+            "first_name",
+            "last_name",
+            "phone_number",
+        )
