@@ -1,9 +1,11 @@
-from rest_framework import viewsets
+from drf_spectacular.utils import extend_schema
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from apps.users.models import User
-from apps.users.serializers import UserSerializer
+from apps.users.serializers import UserRegistrationSerializer, UserSerializer
 
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
@@ -25,3 +27,23 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     def me(self, request):
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
+
+    @extend_schema(
+        request=UserRegistrationSerializer,
+        responses={status.HTTP_201_CREATED: UserSerializer},
+    )
+    @action(
+        detail=False,
+        methods=("post",),
+        url_path="register",
+        permission_classes=(AllowAny,),
+    )
+    def register(self, request):
+        serializer = UserRegistrationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        response_serializer = self.get_serializer(user)
+        return Response(
+            response_serializer.data,
+            status=status.HTTP_201_CREATED,
+        )

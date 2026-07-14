@@ -1,4 +1,10 @@
-from apps.users.serializers.user import UserSerializer
+from apps.users.serializers.user import (
+    UserRegistrationSerializer,
+    UserSerializer,
+)
 
 
-__all__ = ["UserSerializer"]
+__all__ = [
+    "UserRegistrationSerializer",
+    "UserSerializer",
+]
