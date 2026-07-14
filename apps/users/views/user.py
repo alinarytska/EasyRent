@@ -6,6 +6,7 @@ from rest_framework.response import Response
 
 from apps.users.models import User
 from apps.users.serializers import (
+    UserGroupUpdateSerializer,
     UserProfileUpdateSerializer,
     UserRegistrationSerializer,
     UserSerializer,
@@ -48,6 +49,21 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
 
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
+
+    @extend_schema(
+        request=UserGroupUpdateSerializer,
+        responses=UserSerializer,
+    )
+    @action(detail=False, methods=("patch",), url_path="me/groups")
+    def update_groups(self, request):
+        serializer = UserGroupUpdateSerializer(
+            request.user,
+            data=request.data,
+        )
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        response_serializer = self.get_serializer(user)
+        return Response(response_serializer.data)
 
     @extend_schema(
         request=UserRegistrationSerializer,

@@ -1,4 +1,6 @@
 from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.models import Group
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.users.models import User
@@ -7,6 +9,7 @@ from apps.users.models import User
 class UserSerializer(serializers.ModelSerializer):
     can_rent = serializers.BooleanField(read_only=True)
     can_create_listing = serializers.BooleanField(read_only=True)
+    rental_groups = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -16,15 +19,28 @@ class UserSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "phone_number",
+            "rental_groups",
             "can_rent",
             "can_create_listing",
             "date_joined",
         )
         read_only_fields = (
             "id",
+            "rental_groups",
             "can_rent",
             "can_create_listing",
             "date_joined",
+        )
+
+    @extend_schema_field(serializers.ListField(child=serializers.CharField()))
+    def get_rental_groups(self, obj):
+        return list(
+            obj.groups.filter(
+                name__in=(
+                    User.RENTERS_GROUP,
+                    User.LANDLORDS_GROUP,
+                )
+            ).values_list("name", flat=True)
         )
 
 
@@ -78,4 +94,46 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "phone_number",
+        )
+
+
+class UserGroupUpdateSerializer(serializers.Serializer):
+    groups = serializers.ListField(
+        child=serializers.ChoiceField(
+            choices=(
+                User.RENTERS_GROUP,
+                User.LANDLORDS_GROUP,
+            )
+        ),
+        allow_empty=True,
+    )
+
+    def validate_groups(self, groups):
+        if len(groups) != len(set(groups)):
+            raise serializers.ValidationError(
+                "Group names must be unique.",
+            )
+
+        return groups
+
+    def update(self, instance, validated_data):
+        selected_group_names = validated_data["groups"]
+        rental_group_names = (
+            User.RENTERS_GROUP,
+            User.LANDLORDS_GROUP,
+        )
+        selected_groups = [
+            Group.objects.get_or_create(name=group_name)[0]
+            for group_name in selected_group_names
+        ]
+        other_groups = instance.groups.exclude(
+            name__in=rental_group_names,
+        )
+
+        instance.groups.set([*other_groups, *selected_groups])
+        return instance
+
+    def create(self, validated_data):
+        raise NotImplementedError(
+            "UserGroupUpdateSerializer only updates existing users."
         )

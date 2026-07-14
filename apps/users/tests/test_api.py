@@ -1,3 +1,4 @@
+from django.contrib.auth.models import Group
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -104,6 +105,94 @@ class CurrentUserAPITests(APITestCase):
         response = self.client.patch(
             "/api/users/me/",
             data={"first_name": "Updated"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class CurrentUserGroupAPITests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email="groups@example.com",
+            password="strong-test-password",
+            first_name="Anna",
+            last_name="Smith",
+        )
+
+    def test_user_can_join_renters_group(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.patch(
+            "/api/users/me/groups/",
+            data={"groups": [User.RENTERS_GROUP]},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["rental_groups"], [User.RENTERS_GROUP])
+        self.assertTrue(response.data["can_rent"])
+        self.assertFalse(response.data["can_create_listing"])
+
+    def test_user_can_join_both_rental_groups(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.patch(
+            "/api/users/me/groups/",
+            data={
+                "groups": [
+                    User.RENTERS_GROUP,
+                    User.LANDLORDS_GROUP,
+                ]
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            set(response.data["rental_groups"]),
+            {
+                User.RENTERS_GROUP,
+                User.LANDLORDS_GROUP,
+            },
+        )
+        self.assertTrue(response.data["can_rent"])
+        self.assertTrue(response.data["can_create_listing"])
+
+    def test_user_can_clear_rental_groups(self):
+        self.client.force_authenticate(user=self.user)
+        self.user.groups.add(
+            Group.objects.get(name=User.RENTERS_GROUP),
+            Group.objects.get(name=User.LANDLORDS_GROUP),
+        )
+
+        response = self.client.patch(
+            "/api/users/me/groups/",
+            data={"groups": []},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["rental_groups"], [])
+        self.assertFalse(response.data["can_rent"])
+        self.assertFalse(response.data["can_create_listing"])
+
+    def test_user_cannot_add_unknown_group(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.patch(
+            "/api/users/me/groups/",
+            data={"groups": ["Admins"]},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("groups", response.data)
+
+    def test_anonymous_user_cannot_update_groups(self):
+        response = self.client.patch(
+            "/api/users/me/groups/",
+            data={"groups": [User.RENTERS_GROUP]},
             format="json",
         )
 
