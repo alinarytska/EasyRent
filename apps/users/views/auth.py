@@ -4,6 +4,7 @@ from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from apps.users.serializers import JWTLogoutSerializer
 
@@ -11,8 +12,17 @@ from apps.users.serializers import JWTLogoutSerializer
 logger = logging.getLogger(__name__)
 
 
+class JWTTokenObtainPairView(TokenObtainPairView):
+    throttle_scope = "auth"
+
+
+class JWTTokenRefreshView(TokenRefreshView):
+    throttle_scope = "auth_refresh"
+
+
 class JWTLogoutView(GenericAPIView):
     serializer_class = JWTLogoutSerializer
+    throttle_scope = "auth"
 
     @extend_schema(
         request=JWTLogoutSerializer,

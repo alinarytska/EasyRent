@@ -16,6 +16,7 @@ from apps.users.services import deactivate_user_account
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = UserSerializer
+    throttle_scope = None
 
     def get_queryset(self):
         queryset = User.objects.all()
@@ -83,6 +84,7 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         methods=("post",),
         url_path="register",
         permission_classes=(AllowAny,),
+        throttle_scope="registration",
     )
     def register(self, request):
         serializer = UserRegistrationSerializer(data=request.data)

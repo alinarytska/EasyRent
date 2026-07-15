@@ -14,6 +14,7 @@ from apps.view_history.services import get_popular_listings, record_listing_view
 
 class ViewHistoryViewSet(viewsets.ModelViewSet):
     serializer_class = ViewHistorySerializer
+    throttle_scope = "history"
     filter_backends = (DjangoFilterBackend, OrderingFilter)
     filterset_class = ViewHistoryFilter
     ordering_fields = (
@@ -32,7 +33,12 @@ class ViewHistoryViewSet(viewsets.ModelViewSet):
         return queryset.filter(user=self.request.user)
 
     @extend_schema(responses=ListingSerializer(many=True))
-    @action(detail=False, methods=("get",), url_path="popular-listings")
+    @action(
+        detail=False,
+        methods=("get",),
+        url_path="popular-listings",
+        throttle_scope="popular",
+    )
     def popular_listings(self, request):
         queryset = get_popular_listings(
             active_only=True,

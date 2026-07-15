@@ -19,6 +19,7 @@ from apps.view_history.services import get_popular_listings, record_listing_view
 class ListingViewSet(viewsets.ModelViewSet):
     serializer_class = ListingSerializer
     permission_classes = (ListingPermission,)
+    throttle_scope = "listings"
     filter_backends = (DjangoFilterBackend, SearchFilter, OrderingFilter)
     filterset_class = ListingFilter
     search_fields = (
@@ -116,7 +117,12 @@ class ListingViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
-    @action(detail=False, methods=("get",), url_path="popular")
+    @action(
+        detail=False,
+        methods=("get",),
+        url_path="popular",
+        throttle_scope="popular",
+    )
     def popular(self, request):
         queryset = get_popular_listings(active_only=True)
         page = self.paginate_queryset(queryset)

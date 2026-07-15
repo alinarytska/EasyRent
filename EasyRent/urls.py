@@ -3,15 +3,26 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from apps.users.views import JWTLogoutView
+from apps.users.views import (
+    JWTLogoutView,
+    JWTTokenObtainPairView,
+    JWTTokenRefreshView,
+)
 
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path(
+        'api/auth/token/',
+        JWTTokenObtainPairView.as_view(),
+        name='token_obtain_pair',
+    ),
+    path(
+        'api/auth/token/refresh/',
+        JWTTokenRefreshView.as_view(),
+        name='token_refresh',
+    ),
     path('api/auth/logout/', JWTLogoutView.as_view(), name='token_logout'),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path(

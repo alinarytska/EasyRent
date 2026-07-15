@@ -170,6 +170,17 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_THROTTLE_CLASSES': (
+        'rest_framework.throttling.ScopedRateThrottle',
+    ),
+    'DEFAULT_THROTTLE_RATES': {
+        'auth': env("THROTTLE_AUTH_RATE", default="10/min"),
+        'auth_refresh': env("THROTTLE_AUTH_REFRESH_RATE", default="20/min"),
+        'registration': env("THROTTLE_REGISTRATION_RATE", default="5/min"),
+        'listings': env("THROTTLE_LISTINGS_RATE", default="120/min"),
+        'history': env("THROTTLE_HISTORY_RATE", default="120/min"),
+        'popular': env("THROTTLE_POPULAR_RATE", default="60/min"),
+    },
 }
 
 SIMPLE_JWT = {
