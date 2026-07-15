@@ -11,6 +11,7 @@ from apps.users.serializers import (
     UserRegistrationSerializer,
     UserSerializer,
 )
+from apps.users.services import deactivate_user_account
 
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
@@ -34,8 +35,16 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         request=UserProfileUpdateSerializer,
         responses=UserSerializer,
     )
-    @action(detail=False, methods=("get", "patch"), url_path="me")
+    @extend_schema(
+        methods=("DELETE",),
+        responses={status.HTTP_204_NO_CONTENT: None},
+    )
+    @action(detail=False, methods=("get", "patch", "delete"), url_path="me")
     def me(self, request):
+        if request.method == "DELETE":
+            deactivate_user_account(request.user)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
         if request.method == "PATCH":
             serializer = UserProfileUpdateSerializer(
                 request.user,

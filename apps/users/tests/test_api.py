@@ -246,6 +246,79 @@ class CurrentUserAPITests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
+    def test_user_can_deactivate_current_account(self):
+        self.user.groups.add(
+            Group.objects.get(name=User.RENTERS_GROUP),
+            Group.objects.get(name=User.LANDLORDS_GROUP),
+        )
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.delete("/api/users/me/")
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(response.content, b"")
+
+        self.user.refresh_from_db()
+
+        self.assertFalse(self.user.is_active)
+        self.assertFalse(self.user.has_usable_password())
+        self.assertFalse(self.user.groups.exists())
+
+    def test_anonymous_user_cannot_deactivate_account(self):
+        response = self.client.delete("/api/users/me/")
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.is_active)
+
+    def test_deactivated_user_cannot_obtain_jwt_tokens(self):
+        self.client.force_authenticate(user=self.user)
+
+        self.client.delete("/api/users/me/")
+        self.client.force_authenticate(user=None)
+
+        response = self.client.post(
+            "/api/auth/token/",
+            data={
+                "email": "profile@example.com",
+                "password": "strong-test-password",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertNotIn("access", response.data)
+        self.assertNotIn("refresh", response.data)
+
+    def test_account_deactivation_blacklists_existing_refresh_token(self):
+        token_response = self.client.post(
+            "/api/auth/token/",
+            data={
+                "email": "profile@example.com",
+                "password": "strong-test-password",
+            },
+            format="json",
+        )
+        access_token = token_response.data["access"]
+        refresh_token = token_response.data["refresh"]
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {access_token}")
+
+        response = self.client.delete("/api/users/me/")
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+        self.client.credentials()
+        refresh_response = self.client.post(
+            "/api/auth/token/refresh/",
+            data={"refresh": refresh_token},
+            format="json",
+        )
+
+        self.assertEqual(
+            refresh_response.status_code,
+            status.HTTP_401_UNAUTHORIZED,
+        )
+
 
 class CurrentUserGroupAPITests(APITestCase):
     def setUp(self):
