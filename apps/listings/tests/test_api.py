@@ -5,6 +5,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.listings.models import Listing
+from apps.search_history.models import SearchHistory
 from apps.users.models import User
 
 
@@ -177,3 +178,87 @@ class ListingPermissionAPITests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertTrue(Listing.objects.filter(pk=listing.pk).exists())
+
+
+class ListingSearchHistoryAPITests(APITestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user(
+            email="owner@example.com",
+            password="strong-test-password",
+            first_name="Anna",
+            last_name="Smith",
+        )
+        self.viewer = User.objects.create_user(
+            email="viewer@example.com",
+            password="strong-test-password",
+            first_name="Bob",
+            last_name="Green",
+        )
+        self.create_listing(
+            title="Berlin apartment",
+            city="Berlin",
+            price_per_night=Decimal("120.00"),
+        )
+        self.create_listing(
+            title="Hamburg apartment",
+            city="Hamburg",
+            price_per_night=Decimal("90.00"),
+        )
+
+    def create_listing(self, **overrides):
+        data = {
+            "owner": self.owner,
+            "title": "Apartment in Berlin",
+            "description": "Bright apartment near the city center.",
+            "property_type": Listing.PropertyType.APARTMENT,
+            "price_per_night": Decimal("120.00"),
+            "rooms": 2,
+            "city": "Berlin",
+            "district": "Mitte",
+            "postal_code": "10115",
+            "street": "Invalidenstrasse",
+            "house_number": "1",
+        }
+        data.update(overrides)
+        return Listing.objects.create(**data)
+
+    def test_listing_search_creates_search_history_entry(self):
+        self.client.force_authenticate(user=self.viewer)
+
+        response = self.client.get(
+            (
+                "/api/listings/?search=Berlin&city=Berlin&min_price=100"
+                "&ordering=price_per_night&page=1"
+            ),
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(SearchHistory.objects.count(), 1)
+
+        search_history = SearchHistory.objects.get()
+
+        self.assertEqual(search_history.user, self.viewer)
+        self.assertEqual(search_history.query, "Berlin")
+        self.assertEqual(
+            search_history.search_filters,
+            {
+                "city": "Berlin",
+                "min_price": "100",
+            },
+        )
+
+    def test_listing_filter_without_search_does_not_create_search_history(self):
+        self.client.force_authenticate(user=self.viewer)
+
+        response = self.client.get("/api/listings/?city=Berlin&min_price=100")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(SearchHistory.objects.exists())
+
+    def test_blank_listing_search_does_not_create_search_history(self):
+        self.client.force_authenticate(user=self.viewer)
+
+        response = self.client.get("/api/listings/?search=+++")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(SearchHistory.objects.exists())

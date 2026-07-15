@@ -9,6 +9,7 @@ from apps.listings.filters import ListingFilter
 from apps.listings.models import Listing
 from apps.listings.permissions import ListingPermission
 from apps.listings.serializers import ListingSerializer
+from apps.search_history.services import record_listing_search
 
 
 class ListingViewSet(viewsets.ModelViewSet):
@@ -41,6 +42,15 @@ class ListingViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
+
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        record_listing_search(
+            user=request.user,
+            query_params=request.query_params,
+        )
+
+        return response
 
     @action(detail=False, methods=("get",), url_path="my")
     def my_listings(self, request):
