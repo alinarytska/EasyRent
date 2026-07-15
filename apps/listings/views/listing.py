@@ -10,8 +10,8 @@ from apps.listings.filters import ListingFilter
 from apps.listings.models import Listing
 from apps.listings.permissions import ListingPermission
 from apps.listings.serializers import ListingSerializer
-from apps.reviews.models import Review
 from apps.reviews.serializers import ReviewSerializer
+from apps.reviews.services import get_reviews_for_listing
 from apps.search_history.services import record_listing_search
 from apps.view_history.services import get_popular_listings, record_listing_view
 
@@ -70,15 +70,7 @@ class ListingViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=("get",), url_path="reviews")
     def reviews(self, request, pk=None):
         listing = self.get_object()
-        queryset = (
-            Review.objects.select_related(
-                "booking",
-                "booking__listing",
-                "booking__renter",
-            )
-            .filter(booking__listing=listing)
-            .order_by("-created_at", "-id")
-        )
+        queryset = get_reviews_for_listing(listing)
         page = self.paginate_queryset(queryset)
 
         if page is not None:
