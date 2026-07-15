@@ -47,11 +47,11 @@ class ListingViewSet(viewsets.ModelViewSet):
         user = self.request.user
         action = getattr(self, "action", None)
 
-        if not user.is_authenticated:
-            return queryset.none()
-
-        if user.is_staff or action == "my_listings":
+        if action == "my_listings":
             return queryset
+
+        if not user.is_authenticated:
+            return queryset.active()
 
         if action in (
             "retrieve",

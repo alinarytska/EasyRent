@@ -202,6 +202,47 @@ class ListingPermissionAPITests(APITestCase):
         self.assertIn(active_listing.id, listing_ids)
         self.assertNotIn(inactive_listing.id, listing_ids)
 
+    def test_anonymous_user_can_view_active_listing_list(self):
+        active_listing = self.create_listing(
+            owner=self.landlord,
+            title="Active apartment",
+        )
+        inactive_listing = self.create_listing(
+            owner=self.landlord,
+            title="Inactive apartment",
+            is_active=False,
+        )
+
+        response = self.client.get("/api/listings/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        listing_ids = [item["id"] for item in response.data["results"]]
+        self.assertIn(active_listing.id, listing_ids)
+        self.assertNotIn(inactive_listing.id, listing_ids)
+
+    def test_anonymous_user_can_retrieve_active_listing(self):
+        listing = self.create_listing(owner=self.landlord)
+
+        response = self.client.get(f"/api/listings/{listing.id}/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["id"], listing.id)
+
+    def test_anonymous_user_cannot_retrieve_inactive_listing(self):
+        listing = self.create_listing(
+            owner=self.landlord,
+            is_active=False,
+        )
+
+        response = self.client.get(f"/api/listings/{listing.id}/")
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_anonymous_user_cannot_view_my_listings(self):
+        response = self.client.get("/api/listings/my/")
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
     def test_owner_can_see_inactive_listing_in_my_listings(self):
         inactive_listing = self.create_listing(
             owner=self.landlord,
@@ -348,6 +389,12 @@ class ListingSearchHistoryAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertFalse(SearchHistory.objects.exists())
 
+    def test_anonymous_listing_search_does_not_create_search_history(self):
+        response = self.client.get("/api/listings/?search=Berlin")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(SearchHistory.objects.exists())
+
 
 class ListingViewHistoryAPITests(APITestCase):
     def setUp(self):
@@ -412,6 +459,12 @@ class ListingViewHistoryAPITests(APITestCase):
         self.client.force_authenticate(user=self.viewer)
 
         response = self.client.get("/api/listings/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(ViewHistory.objects.exists())
+
+    def test_anonymous_listing_detail_does_not_create_view_history_entry(self):
+        response = self.client.get(f"/api/listings/{self.listing.id}/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertFalse(ViewHistory.objects.exists())
@@ -496,10 +549,19 @@ class ListingReviewAPITests(APITestCase):
         self.assertIn(review.id, review_ids)
         self.assertNotIn(other_review.id, review_ids)
 
-    def test_anonymous_user_cannot_view_listing_reviews(self):
+    def test_anonymous_user_can_view_listing_reviews(self):
+        booking = self.create_completed_booking(self.listing)
+        review = Review.objects.create(
+            booking=booking,
+            rating=5,
+            comment="Excellent apartment.",
+        )
+
         response = self.client.get(f"/api/listings/{self.listing.id}/reviews/")
 
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        review_ids = [item["id"] for item in response.data["results"]]
+        self.assertIn(review.id, review_ids)
 
     def test_listing_reviews_endpoint_does_not_create_view_history(self):
         self.create_completed_booking(self.listing)

@@ -3,8 +3,11 @@ from rest_framework.permissions import SAFE_METHODS, BasePermission
 
 class ListingPermission(BasePermission):
     def has_permission(self, request, view):
-        if request.method in SAFE_METHODS:
+        if view.action == "my_listings":
             return request.user.is_authenticated
+
+        if request.method in SAFE_METHODS:
+            return True
 
         if view.action == "create":
             return (
