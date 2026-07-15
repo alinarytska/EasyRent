@@ -7,6 +7,7 @@ from rest_framework.test import APITestCase
 from apps.listings.models import Listing
 from apps.search_history.models import SearchHistory
 from apps.users.models import User
+from apps.view_history.models import ViewHistory
 
 
 class ListingPermissionAPITests(APITestCase):
@@ -262,3 +263,71 @@ class ListingSearchHistoryAPITests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertFalse(SearchHistory.objects.exists())
+
+
+class ListingViewHistoryAPITests(APITestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user(
+            email="owner@example.com",
+            password="strong-test-password",
+            first_name="Anna",
+            last_name="Smith",
+        )
+        self.viewer = User.objects.create_user(
+            email="viewer@example.com",
+            password="strong-test-password",
+            first_name="Bob",
+            last_name="Green",
+        )
+        self.listing = self.create_listing()
+        self.other_listing = self.create_listing(title="Hamburg apartment")
+
+    def create_listing(self, **overrides):
+        data = {
+            "owner": self.owner,
+            "title": "Apartment in Berlin",
+            "description": "Bright apartment near the city center.",
+            "property_type": Listing.PropertyType.APARTMENT,
+            "price_per_night": Decimal("120.00"),
+            "rooms": 2,
+            "city": "Berlin",
+            "district": "Mitte",
+            "postal_code": "10115",
+            "street": "Invalidenstrasse",
+            "house_number": "1",
+        }
+        data.update(overrides)
+        return Listing.objects.create(**data)
+
+    def test_listing_detail_creates_view_history_entry(self):
+        self.client.force_authenticate(user=self.viewer)
+
+        response = self.client.get(f"/api/listings/{self.listing.id}/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["views_count"], 1)
+        self.assertTrue(
+            ViewHistory.objects.filter(
+                user=self.viewer,
+                listing=self.listing,
+            ).exists()
+        )
+
+    def test_repeated_listing_detail_view_updates_existing_entry(self):
+        self.client.force_authenticate(user=self.viewer)
+
+        first_response = self.client.get(f"/api/listings/{self.listing.id}/")
+        second_response = self.client.get(f"/api/listings/{self.listing.id}/")
+
+        self.assertEqual(first_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(second_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(ViewHistory.objects.count(), 1)
+        self.assertEqual(second_response.data["views_count"], 1)
+
+    def test_listing_list_does_not_create_view_history_entry(self):
+        self.client.force_authenticate(user=self.viewer)
+
+        response = self.client.get("/api/listings/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(ViewHistory.objects.exists())

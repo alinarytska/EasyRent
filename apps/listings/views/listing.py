@@ -10,6 +10,7 @@ from apps.listings.models import Listing
 from apps.listings.permissions import ListingPermission
 from apps.listings.serializers import ListingSerializer
 from apps.search_history.services import record_listing_search
+from apps.view_history.services import record_listing_view
 
 
 class ListingViewSet(viewsets.ModelViewSet):
@@ -51,6 +52,16 @@ class ListingViewSet(viewsets.ModelViewSet):
         )
 
         return response
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        record_listing_view(user=request.user, listing=instance)
+
+        if hasattr(instance, "views_count"):
+            instance.views_count = instance.view_history.count()
+
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
 
     @action(detail=False, methods=("get",), url_path="my")
     def my_listings(self, request):
