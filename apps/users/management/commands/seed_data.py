@@ -222,23 +222,36 @@ class Command(BaseCommand):
         return renters_group, landlords_group
 
     def clear_seed_data(self):
-        seed_users = User.objects.filter(email__endswith=f"@{SEED_EMAIL_DOMAIN}")
-        seed_listings = Listing.objects.filter(owner__in=seed_users)
-        seed_bookings = Booking.objects.filter(
-            Q(renter__in=seed_users) | Q(listing__in=seed_listings)
+        seed_user_ids = list(
+            User.objects.filter(
+                email__endswith=f"@{SEED_EMAIL_DOMAIN}"
+            ).values_list("id", flat=True)
+        )
+        seed_listing_ids = list(
+            Listing.objects.filter(
+                owner_id__in=seed_user_ids
+            ).values_list("id", flat=True)
+        )
+        seed_booking_ids = list(
+            Booking.objects.filter(
+                Q(renter_id__in=seed_user_ids)
+                | Q(listing_id__in=seed_listing_ids)
+            ).values_list("id", flat=True)
         )
 
-        SearchHistory.objects.filter(user__in=seed_users).delete()
-        ViewHistory.objects.filter(user__in=seed_users).delete()
-        ViewHistory.objects.filter(listing__in=seed_listings).delete()
-        self.delete_listing_images(seed_listings)
-        Review.objects.filter(booking__in=seed_bookings).delete()
-        seed_bookings.delete()
-        seed_listings.delete()
-        seed_users.delete()
+        SearchHistory.objects.filter(user_id__in=seed_user_ids).delete()
+        ViewHistory.objects.filter(user_id__in=seed_user_ids).delete()
+        ViewHistory.objects.filter(listing_id__in=seed_listing_ids).delete()
+        self.delete_listing_images(seed_listing_ids)
+        Review.objects.filter(booking_id__in=seed_booking_ids).delete()
+        Booking.objects.filter(id__in=seed_booking_ids).delete()
+        Listing.objects.filter(id__in=seed_listing_ids).delete()
+        User.objects.filter(id__in=seed_user_ids).delete()
 
-    def delete_listing_images(self, seed_listings):
-        for listing_image in ListingImage.objects.filter(listing__in=seed_listings):
+    def delete_listing_images(self, seed_listing_ids):
+        for listing_image in ListingImage.objects.filter(
+            listing_id__in=seed_listing_ids
+        ):
             if listing_image.image:
                 listing_image.image.delete(save=False)
             listing_image.delete()
