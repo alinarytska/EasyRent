@@ -59,8 +59,8 @@ The `USE_REMOTE` variable in `.env` controls the database:
 
 After starting the server, the generated documentation is available at:
 
-- Swagger UI: `http://127.0.0.1:8000/api/docs/`
-- OpenAPI schema: `http://127.0.0.1:8000/api/schema/`
+- Swagger UI: `http://127.0.0.1:8000/api/v1/docs/`
+- OpenAPI schema: `http://127.0.0.1:8000/api/v1/schema/`
 
 ## Current status
 

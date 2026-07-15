@@ -98,7 +98,7 @@ class BookingPermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.renter)
 
         response = self.client.post(
-            "/api/bookings/",
+            "/api/v1/bookings/",
             data=self.build_booking_payload(),
             format="json",
         )
@@ -113,7 +113,7 @@ class BookingPermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.renter)
 
         response = self.client.post(
-            "/api/bookings/",
+            "/api/v1/bookings/",
             data=self.build_booking_payload(renter=self.other_renter.id),
             format="json",
         )
@@ -131,7 +131,7 @@ class BookingPermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.user_without_renter_group)
 
         response = self.client.post(
-            "/api/bookings/",
+            "/api/v1/bookings/",
             data=self.build_booking_payload(),
             format="json",
         )
@@ -149,7 +149,7 @@ class BookingPermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.renter)
 
         response = self.client.post(
-            "/api/bookings/",
+            "/api/v1/bookings/",
             data=self.build_booking_payload(listing=own_listing.id),
             format="json",
         )
@@ -169,7 +169,7 @@ class BookingPermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.renter)
 
         response = self.client.post(
-            "/api/bookings/",
+            "/api/v1/bookings/",
             data=self.build_booking_payload(
                 start_date=past_start_date.isoformat(),
                 end_date=past_end_date.isoformat(),
@@ -185,7 +185,7 @@ class BookingPermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.renter)
 
         response = self.client.post(
-            "/api/bookings/",
+            "/api/v1/bookings/",
             data=self.build_booking_payload(),
             format="json",
         )
@@ -197,7 +197,7 @@ class BookingPermissionAPITests(APITestCase):
         booking = self.create_booking()
         self.client.force_authenticate(user=self.other_renter)
 
-        response = self.client.get(f"/api/bookings/{booking.id}/")
+        response = self.client.get(f"/api/v1/bookings/{booking.id}/")
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
@@ -205,7 +205,7 @@ class BookingPermissionAPITests(APITestCase):
         booking = self.create_booking()
         self.client.force_authenticate(user=self.other_renter)
 
-        response = self.client.get("/api/bookings/")
+        response = self.client.get("/api/v1/bookings/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         booking_ids = [item["id"] for item in response.data["results"]]
@@ -215,7 +215,7 @@ class BookingPermissionAPITests(APITestCase):
         booking = self.create_booking()
         self.client.force_authenticate(user=self.staff_user)
 
-        response = self.client.get(f"/api/bookings/{booking.id}/")
+        response = self.client.get(f"/api/v1/bookings/{booking.id}/")
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
@@ -224,7 +224,7 @@ class BookingPermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.landlord)
 
         response = self.client.patch(
-            f"/api/bookings/{booking.id}/",
+            f"/api/v1/bookings/{booking.id}/",
             data={"end_date": "2026-08-05"},
             format="json",
         )
@@ -248,7 +248,7 @@ class BookingPermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.landlord)
 
         response = self.client.patch(
-            f"/api/bookings/{booking.id}/",
+            f"/api/v1/bookings/{booking.id}/",
             data={"listing": another_listing.id},
             format="json",
         )
@@ -271,7 +271,7 @@ class BookingPermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.landlord)
 
         response = self.client.put(
-            f"/api/bookings/{booking.id}/",
+            f"/api/v1/bookings/{booking.id}/",
             data={
                 "listing": another_listing.id,
                 "start_date": "2026-08-01",
@@ -295,7 +295,7 @@ class BookingPermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.landlord)
 
         response = self.client.patch(
-            f"/api/bookings/{booking.id}/",
+            f"/api/v1/bookings/{booking.id}/",
             data={"end_date": "2026-08-05"},
             format="json",
         )
@@ -313,7 +313,7 @@ class BookingPermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.landlord)
 
         response = self.client.put(
-            f"/api/bookings/{booking.id}/",
+            f"/api/v1/bookings/{booking.id}/",
             data={
                 "listing": self.listing.id,
                 "start_date": "2026-08-01",
@@ -336,7 +336,7 @@ class BookingPermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.renter)
 
         response = self.client.patch(
-            f"/api/bookings/{booking.id}/",
+            f"/api/v1/bookings/{booking.id}/",
             data={"end_date": "2026-08-05"},
             format="json",
         )
@@ -352,7 +352,7 @@ class BookingPermissionAPITests(APITestCase):
         booking = self.create_booking()
         self.client.force_authenticate(user=self.landlord)
 
-        response = self.client.delete(f"/api/bookings/{booking.id}/")
+        response = self.client.delete(f"/api/v1/bookings/{booking.id}/")
 
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Booking.objects.filter(pk=booking.pk).exists())
@@ -366,7 +366,7 @@ class BookingPermissionAPITests(APITestCase):
         )
         self.client.force_authenticate(user=self.landlord)
 
-        response = self.client.delete(f"/api/bookings/{booking.id}/")
+        response = self.client.delete(f"/api/v1/bookings/{booking.id}/")
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("detail", response.data)
@@ -377,7 +377,7 @@ class BookingPermissionAPITests(APITestCase):
         booking = self.create_booking()
         self.client.force_authenticate(user=self.renter)
 
-        response = self.client.delete(f"/api/bookings/{booking.id}/")
+        response = self.client.delete(f"/api/v1/bookings/{booking.id}/")
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertTrue(Booking.objects.filter(pk=booking.pk).exists())
@@ -386,7 +386,7 @@ class BookingPermissionAPITests(APITestCase):
         booking = self.create_booking(status=Booking.Status.PENDING)
         self.client.force_authenticate(user=self.landlord)
 
-        response = self.client.post(f"/api/bookings/{booking.id}/confirm/")
+        response = self.client.post(f"/api/v1/bookings/{booking.id}/confirm/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["status"], Booking.Status.CONFIRMED)
@@ -399,7 +399,7 @@ class BookingPermissionAPITests(APITestCase):
         booking = self.create_booking(status=Booking.Status.PENDING)
         self.client.force_authenticate(user=self.renter)
 
-        response = self.client.post(f"/api/bookings/{booking.id}/confirm/")
+        response = self.client.post(f"/api/v1/bookings/{booking.id}/confirm/")
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
@@ -411,7 +411,7 @@ class BookingPermissionAPITests(APITestCase):
         booking = self.create_booking(status=Booking.Status.CANCELLED)
         self.client.force_authenticate(user=self.landlord)
 
-        response = self.client.post(f"/api/bookings/{booking.id}/confirm/")
+        response = self.client.post(f"/api/v1/bookings/{booking.id}/confirm/")
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("status", response.data)
@@ -424,7 +424,7 @@ class BookingPermissionAPITests(APITestCase):
         booking = self.create_booking(status=Booking.Status.PENDING)
         self.client.force_authenticate(user=self.landlord)
 
-        response = self.client.post(f"/api/bookings/{booking.id}/reject/")
+        response = self.client.post(f"/api/v1/bookings/{booking.id}/reject/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["status"], Booking.Status.REJECTED)
@@ -437,7 +437,7 @@ class BookingPermissionAPITests(APITestCase):
         booking = self.create_booking(status=Booking.Status.PENDING)
         self.client.force_authenticate(user=self.renter)
 
-        response = self.client.post(f"/api/bookings/{booking.id}/reject/")
+        response = self.client.post(f"/api/v1/bookings/{booking.id}/reject/")
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
@@ -449,7 +449,7 @@ class BookingPermissionAPITests(APITestCase):
         booking = self.create_booking(status=Booking.Status.PENDING)
         self.client.force_authenticate(user=self.other_renter)
 
-        response = self.client.post(f"/api/bookings/{booking.id}/cancel/")
+        response = self.client.post(f"/api/v1/bookings/{booking.id}/cancel/")
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
@@ -461,7 +461,7 @@ class BookingPermissionAPITests(APITestCase):
         booking = self.create_booking(status=Booking.Status.PENDING)
         self.client.force_authenticate(user=self.renter)
 
-        response = self.client.post(f"/api/bookings/{booking.id}/cancel/")
+        response = self.client.post(f"/api/v1/bookings/{booking.id}/cancel/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["status"], Booking.Status.CANCELLED)
@@ -478,7 +478,7 @@ class BookingPermissionAPITests(APITestCase):
         )
         self.client.force_authenticate(user=self.renter)
 
-        response = self.client.post(f"/api/bookings/{booking.id}/cancel/")
+        response = self.client.post(f"/api/v1/bookings/{booking.id}/cancel/")
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("status", response.data)
@@ -491,7 +491,7 @@ class BookingPermissionAPITests(APITestCase):
         booking = self.create_booking(status=Booking.Status.CONFIRMED)
         self.client.force_authenticate(user=self.landlord)
 
-        response = self.client.post(f"/api/bookings/{booking.id}/cancel/")
+        response = self.client.post(f"/api/v1/bookings/{booking.id}/cancel/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["status"], Booking.Status.CANCELLED)
@@ -504,7 +504,7 @@ class BookingPermissionAPITests(APITestCase):
         booking = self.create_booking(status=Booking.Status.COMPLETED)
         self.client.force_authenticate(user=self.renter)
 
-        response = self.client.post(f"/api/bookings/{booking.id}/cancel/")
+        response = self.client.post(f"/api/v1/bookings/{booking.id}/cancel/")
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("status", response.data)

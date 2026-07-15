@@ -8,7 +8,7 @@ from apps.users.models import User
 class UserRegistrationAPITests(APITestCase):
     def test_user_can_register(self):
         response = self.client.post(
-            "/api/users/register/",
+            "/api/v1/users/register/",
             data={
                 "email": "Renter@Example.COM",
                 "password": "Very-Strong-Password-123!",
@@ -33,7 +33,7 @@ class UserRegistrationAPITests(APITestCase):
 
     def test_registration_requires_matching_passwords(self):
         response = self.client.post(
-            "/api/users/register/",
+            "/api/v1/users/register/",
             data={
                 "email": "renter@example.com",
                 "password": "Very-Strong-Password-123!",
@@ -62,7 +62,7 @@ class JWTAuthenticationAPITests(APITestCase):
 
     def test_user_can_obtain_jwt_tokens_with_email_and_password(self):
         response = self.client.post(
-            "/api/auth/token/",
+            "/api/v1/auth/token/",
             data={
                 "email": "auth@example.com",
                 "password": "StrongPassword123!",
@@ -76,7 +76,7 @@ class JWTAuthenticationAPITests(APITestCase):
 
     def test_user_can_refresh_access_token(self):
         token_response = self.client.post(
-            "/api/auth/token/",
+            "/api/v1/auth/token/",
             data={
                 "email": "auth@example.com",
                 "password": "StrongPassword123!",
@@ -85,7 +85,7 @@ class JWTAuthenticationAPITests(APITestCase):
         )
 
         response = self.client.post(
-            "/api/auth/token/refresh/",
+            "/api/v1/auth/token/refresh/",
             data={"refresh": token_response.data["refresh"]},
             format="json",
         )
@@ -95,7 +95,7 @@ class JWTAuthenticationAPITests(APITestCase):
 
     def test_user_cannot_obtain_tokens_with_invalid_password(self):
         response = self.client.post(
-            "/api/auth/token/",
+            "/api/v1/auth/token/",
             data={
                 "email": "auth@example.com",
                 "password": "WrongPassword123!",
@@ -109,7 +109,7 @@ class JWTAuthenticationAPITests(APITestCase):
 
     def test_user_can_logout_with_refresh_token(self):
         token_response = self.client.post(
-            "/api/auth/token/",
+            "/api/v1/auth/token/",
             data={
                 "email": "auth@example.com",
                 "password": "StrongPassword123!",
@@ -121,7 +121,7 @@ class JWTAuthenticationAPITests(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {access_token}")
 
         response = self.client.post(
-            "/api/auth/logout/",
+            "/api/v1/auth/logout/",
             data={"refresh": refresh_token},
             format="json",
         )
@@ -130,7 +130,7 @@ class JWTAuthenticationAPITests(APITestCase):
 
     def test_logged_out_refresh_token_cannot_be_used_again(self):
         token_response = self.client.post(
-            "/api/auth/token/",
+            "/api/v1/auth/token/",
             data={
                 "email": "auth@example.com",
                 "password": "StrongPassword123!",
@@ -142,14 +142,14 @@ class JWTAuthenticationAPITests(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {access_token}")
 
         self.client.post(
-            "/api/auth/logout/",
+            "/api/v1/auth/logout/",
             data={"refresh": refresh_token},
             format="json",
         )
         self.client.credentials()
 
         response = self.client.post(
-            "/api/auth/token/refresh/",
+            "/api/v1/auth/token/refresh/",
             data={"refresh": refresh_token},
             format="json",
         )
@@ -158,7 +158,7 @@ class JWTAuthenticationAPITests(APITestCase):
 
     def test_anonymous_user_cannot_logout(self):
         response = self.client.post(
-            "/api/auth/logout/",
+            "/api/v1/auth/logout/",
             data={"refresh": "token"},
             format="json",
         )
@@ -167,7 +167,7 @@ class JWTAuthenticationAPITests(APITestCase):
 
     def test_logout_requires_refresh_token(self):
         token_response = self.client.post(
-            "/api/auth/token/",
+            "/api/v1/auth/token/",
             data={
                 "email": "auth@example.com",
                 "password": "StrongPassword123!",
@@ -178,7 +178,7 @@ class JWTAuthenticationAPITests(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {access_token}")
 
         response = self.client.post(
-            "/api/auth/logout/",
+            "/api/v1/auth/logout/",
             data={},
             format="json",
         )
@@ -200,7 +200,7 @@ class CurrentUserAPITests(APITestCase):
     def test_user_can_get_current_profile(self):
         self.client.force_authenticate(user=self.user)
 
-        response = self.client.get("/api/users/me/")
+        response = self.client.get("/api/v1/users/me/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["email"], "profile@example.com")
@@ -211,7 +211,7 @@ class CurrentUserAPITests(APITestCase):
         self.client.force_authenticate(user=self.user)
 
         response = self.client.patch(
-            "/api/users/me/",
+            "/api/v1/users/me/",
             data={
                 "first_name": "Updated",
                 "last_name": "User",
@@ -233,13 +233,13 @@ class CurrentUserAPITests(APITestCase):
         self.assertEqual(self.user.phone_number, "+491111111111")
 
     def test_anonymous_user_cannot_get_current_profile(self):
-        response = self.client.get("/api/users/me/")
+        response = self.client.get("/api/v1/users/me/")
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_anonymous_user_cannot_update_current_profile(self):
         response = self.client.patch(
-            "/api/users/me/",
+            "/api/v1/users/me/",
             data={"first_name": "Updated"},
             format="json",
         )
@@ -253,7 +253,7 @@ class CurrentUserAPITests(APITestCase):
         )
         self.client.force_authenticate(user=self.user)
 
-        response = self.client.delete("/api/users/me/")
+        response = self.client.delete("/api/v1/users/me/")
 
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertEqual(response.content, b"")
@@ -265,7 +265,7 @@ class CurrentUserAPITests(APITestCase):
         self.assertFalse(self.user.groups.exists())
 
     def test_anonymous_user_cannot_deactivate_account(self):
-        response = self.client.delete("/api/users/me/")
+        response = self.client.delete("/api/v1/users/me/")
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.user.refresh_from_db()
@@ -274,11 +274,11 @@ class CurrentUserAPITests(APITestCase):
     def test_deactivated_user_cannot_obtain_jwt_tokens(self):
         self.client.force_authenticate(user=self.user)
 
-        self.client.delete("/api/users/me/")
+        self.client.delete("/api/v1/users/me/")
         self.client.force_authenticate(user=None)
 
         response = self.client.post(
-            "/api/auth/token/",
+            "/api/v1/auth/token/",
             data={
                 "email": "profile@example.com",
                 "password": "strong-test-password",
@@ -292,7 +292,7 @@ class CurrentUserAPITests(APITestCase):
 
     def test_account_deactivation_blacklists_existing_refresh_token(self):
         token_response = self.client.post(
-            "/api/auth/token/",
+            "/api/v1/auth/token/",
             data={
                 "email": "profile@example.com",
                 "password": "strong-test-password",
@@ -303,13 +303,13 @@ class CurrentUserAPITests(APITestCase):
         refresh_token = token_response.data["refresh"]
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {access_token}")
 
-        response = self.client.delete("/api/users/me/")
+        response = self.client.delete("/api/v1/users/me/")
 
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
         self.client.credentials()
         refresh_response = self.client.post(
-            "/api/auth/token/refresh/",
+            "/api/v1/auth/token/refresh/",
             data={"refresh": refresh_token},
             format="json",
         )
@@ -333,7 +333,7 @@ class CurrentUserGroupAPITests(APITestCase):
         self.client.force_authenticate(user=self.user)
 
         response = self.client.post(
-            "/api/users/me/groups/",
+            "/api/v1/users/me/groups/",
             data={"group": User.RENTERS_GROUP},
             format="json",
         )
@@ -348,7 +348,7 @@ class CurrentUserGroupAPITests(APITestCase):
         self.user.groups.add(Group.objects.get(name=User.RENTERS_GROUP))
 
         response = self.client.post(
-            "/api/users/me/groups/",
+            "/api/v1/users/me/groups/",
             data={"group": User.LANDLORDS_GROUP},
             format="json",
         )
@@ -369,7 +369,7 @@ class CurrentUserGroupAPITests(APITestCase):
         self.user.groups.add(Group.objects.get(name=User.RENTERS_GROUP))
 
         response = self.client.post(
-            "/api/users/me/groups/",
+            "/api/v1/users/me/groups/",
             data={"group": User.RENTERS_GROUP},
             format="json",
         )
@@ -387,7 +387,7 @@ class CurrentUserGroupAPITests(APITestCase):
         self.client.force_authenticate(user=self.user)
 
         response = self.client.post(
-            "/api/users/me/groups/",
+            "/api/v1/users/me/groups/",
             data={"group": "Admins"},
             format="json",
         )
@@ -397,7 +397,7 @@ class CurrentUserGroupAPITests(APITestCase):
 
     def test_anonymous_user_cannot_add_group(self):
         response = self.client.post(
-            "/api/users/me/groups/",
+            "/api/v1/users/me/groups/",
             data={"group": User.RENTERS_GROUP},
             format="json",
         )
@@ -408,7 +408,7 @@ class CurrentUserGroupAPITests(APITestCase):
         self.client.force_authenticate(user=self.user)
 
         response = self.client.patch(
-            "/api/users/me/groups/",
+            "/api/v1/users/me/groups/",
             data={"groups": [User.RENTERS_GROUP]},
             format="json",
         )

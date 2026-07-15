@@ -24,7 +24,7 @@ class SearchHistoryAPITests(APITestCase):
         self.client.force_authenticate(user=self.user)
 
         response = self.client.post(
-            "/api/search-history/",
+            "/api/v1/search-history/",
             data={
                 "query": "Berlin apartment",
                 "search_filters": {
@@ -43,7 +43,7 @@ class SearchHistoryAPITests(APITestCase):
         self.client.force_authenticate(user=self.user)
 
         response = self.client.post(
-            "/api/search-history/",
+            "/api/v1/search-history/",
             data={
                 "user": self.other_user.id,
                 "query": "Hamburg apartment",
@@ -60,13 +60,13 @@ class SearchHistoryAPITests(APITestCase):
         )
 
     def test_anonymous_user_cannot_list_search_history_entries(self):
-        response = self.client.get("/api/search-history/")
+        response = self.client.get("/api/v1/search-history/")
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_anonymous_user_cannot_create_search_history_entry_manually(self):
         response = self.client.post(
-            "/api/search-history/",
+            "/api/v1/search-history/",
             data={"query": "Berlin apartment"},
             format="json",
         )
@@ -85,7 +85,7 @@ class SearchHistoryAPITests(APITestCase):
         )
         self.client.force_authenticate(user=self.user)
 
-        response = self.client.get("/api/search-history/")
+        response = self.client.get("/api/v1/search-history/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         entry_ids = [item["id"] for item in response.data["results"]]
@@ -103,7 +103,7 @@ class SearchHistoryAPITests(APITestCase):
         )
         self.client.force_authenticate(user=self.user)
 
-        response = self.client.get("/api/search-history/?query=berlin")
+        response = self.client.get("/api/v1/search-history/?query=berlin")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         entry_ids = [item["id"] for item in response.data["results"]]
@@ -119,7 +119,7 @@ class SearchHistoryAPITests(APITestCase):
         )
         self.client.force_authenticate(user=self.user)
 
-        response = self.client.get("/api/search-history/popular/")
+        response = self.client.get("/api/v1/search-history/popular/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         first_result = response.data["results"][0]

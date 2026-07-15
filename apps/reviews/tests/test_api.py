@@ -97,7 +97,7 @@ class ReviewPermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.renter)
 
         response = self.client.post(
-            "/api/reviews/",
+            "/api/v1/reviews/",
             data={
                 "booking": self.completed_booking.id,
                 "rating": 5,
@@ -113,7 +113,7 @@ class ReviewPermissionAPITests(APITestCase):
 
     def test_anonymous_user_cannot_create_review(self):
         response = self.client.post(
-            "/api/reviews/",
+            "/api/v1/reviews/",
             data={
                 "booking": self.completed_booking.id,
                 "rating": 5,
@@ -131,7 +131,7 @@ class ReviewPermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.renter)
 
         response = self.client.post(
-            "/api/reviews/",
+            "/api/v1/reviews/",
             data={
                 "booking": self.other_completed_booking.id,
                 "rating": 5,
@@ -147,7 +147,7 @@ class ReviewPermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.renter)
 
         response = self.client.post(
-            "/api/reviews/",
+            "/api/v1/reviews/",
             data={
                 "booking": self.pending_booking.id,
                 "rating": 5,
@@ -163,7 +163,7 @@ class ReviewPermissionAPITests(APITestCase):
         review = self.create_review()
         self.client.force_authenticate(user=self.other_renter)
 
-        response = self.client.get(f"/api/reviews/{review.id}/")
+        response = self.client.get(f"/api/v1/reviews/{review.id}/")
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
@@ -171,7 +171,7 @@ class ReviewPermissionAPITests(APITestCase):
         review = self.create_review()
         self.client.force_authenticate(user=self.other_renter)
 
-        response = self.client.get("/api/reviews/")
+        response = self.client.get("/api/v1/reviews/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         review_ids = [item["id"] for item in response.data["results"]]
@@ -181,7 +181,7 @@ class ReviewPermissionAPITests(APITestCase):
         review = self.create_review()
         self.client.force_authenticate(user=self.staff_user)
 
-        response = self.client.get(f"/api/reviews/{review.id}/")
+        response = self.client.get(f"/api/v1/reviews/{review.id}/")
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
@@ -190,7 +190,7 @@ class ReviewPermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.renter)
 
         response = self.client.patch(
-            f"/api/reviews/{review.id}/",
+            f"/api/v1/reviews/{review.id}/",
             data={"rating": 4, "comment": "Updated review."},
             format="json",
         )
@@ -209,7 +209,7 @@ class ReviewPermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.landlord)
 
         response = self.client.patch(
-            f"/api/reviews/{review.id}/",
+            f"/api/v1/reviews/{review.id}/",
             data={"rating": 1},
             format="json",
         )
@@ -225,7 +225,7 @@ class ReviewPermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.other_renter)
 
         response = self.client.patch(
-            f"/api/reviews/{review.id}/",
+            f"/api/v1/reviews/{review.id}/",
             data={"rating": 1},
             format="json",
         )
@@ -247,7 +247,7 @@ class ReviewPermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.renter)
 
         response = self.client.patch(
-            f"/api/reviews/{review.id}/",
+            f"/api/v1/reviews/{review.id}/",
             data={"booking": another_completed_booking.id},
             format="json",
         )
@@ -270,7 +270,7 @@ class ReviewPermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.renter)
 
         response = self.client.put(
-            f"/api/reviews/{review.id}/",
+            f"/api/v1/reviews/{review.id}/",
             data={
                 "booking": another_completed_booking.id,
                 "rating": 4,
@@ -292,7 +292,7 @@ class ReviewPermissionAPITests(APITestCase):
         review = self.create_review()
         self.client.force_authenticate(user=self.renter)
 
-        response = self.client.delete(f"/api/reviews/{review.id}/")
+        response = self.client.delete(f"/api/v1/reviews/{review.id}/")
 
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Review.objects.filter(pk=review.pk).exists())
@@ -301,7 +301,7 @@ class ReviewPermissionAPITests(APITestCase):
         review = self.create_review()
         self.client.force_authenticate(user=self.landlord)
 
-        response = self.client.delete(f"/api/reviews/{review.id}/")
+        response = self.client.delete(f"/api/v1/reviews/{review.id}/")
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertTrue(Review.objects.filter(pk=review.pk).exists())
@@ -310,7 +310,7 @@ class ReviewPermissionAPITests(APITestCase):
         review = self.create_review()
         self.client.force_authenticate(user=self.other_renter)
 
-        response = self.client.delete(f"/api/reviews/{review.id}/")
+        response = self.client.delete(f"/api/v1/reviews/{review.id}/")
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertTrue(Review.objects.filter(pk=review.pk).exists())

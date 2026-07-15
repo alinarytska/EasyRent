@@ -90,7 +90,7 @@ class ListingPermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.landlord)
 
         response = self.client.post(
-            "/api/listings/",
+            "/api/v1/listings/",
             data=self.build_listing_payload(),
             format="json",
         )
@@ -106,7 +106,7 @@ class ListingPermissionAPITests(APITestCase):
 
     def test_anonymous_user_cannot_create_listing(self):
         response = self.client.post(
-            "/api/listings/",
+            "/api/v1/listings/",
             data=self.build_listing_payload(),
             format="json",
         )
@@ -120,7 +120,7 @@ class ListingPermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.landlord)
 
         response = self.client.post(
-            "/api/listings/",
+            "/api/v1/listings/",
             data=self.build_listing_payload(owner=self.other_landlord.id),
             format="json",
         )
@@ -135,7 +135,7 @@ class ListingPermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.renter)
 
         response = self.client.post(
-            "/api/listings/",
+            "/api/v1/listings/",
             data=self.build_listing_payload(),
             format="json",
         )
@@ -150,7 +150,7 @@ class ListingPermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.landlord)
 
         response = self.client.patch(
-            f"/api/listings/{listing.id}/",
+            f"/api/v1/listings/{listing.id}/",
             data={"title": "Updated apartment"},
             format="json",
         )
@@ -167,7 +167,7 @@ class ListingPermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.landlord)
 
         response = self.client.patch(
-            f"/api/listings/{listing.id}/",
+            f"/api/v1/listings/{listing.id}/",
             data={"price_per_night": "0.00"},
             format="json",
         )
@@ -184,7 +184,7 @@ class ListingPermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.landlord)
 
         response = self.client.patch(
-            f"/api/listings/{listing.id}/",
+            f"/api/v1/listings/{listing.id}/",
             data={"rooms": 0},
             format="json",
         )
@@ -201,7 +201,7 @@ class ListingPermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.landlord)
 
         response = self.client.patch(
-            f"/api/listings/{listing.id}/",
+            f"/api/v1/listings/{listing.id}/",
             data={"rooms": 51},
             format="json",
         )
@@ -218,7 +218,7 @@ class ListingPermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.landlord)
 
         response = self.client.patch(
-            f"/api/listings/{listing.id}/",
+            f"/api/v1/listings/{listing.id}/",
             data={"postal_code": "1234"},
             format="json",
         )
@@ -235,7 +235,7 @@ class ListingPermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.landlord)
 
         response = self.client.patch(
-            f"/api/listings/{listing.id}/",
+            f"/api/v1/listings/{listing.id}/",
             data={"property_type": "castle"},
             format="json",
         )
@@ -252,7 +252,7 @@ class ListingPermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.landlord)
 
         response = self.client.patch(
-            f"/api/listings/{listing.id}/",
+            f"/api/v1/listings/{listing.id}/",
             data={"owner": self.other_landlord.id},
             format="json",
         )
@@ -269,7 +269,7 @@ class ListingPermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.landlord)
 
         response = self.client.patch(
-            f"/api/listings/{listing.id}/",
+            f"/api/v1/listings/{listing.id}/",
             data={"is_active": False},
             format="json",
         )
@@ -287,7 +287,7 @@ class ListingPermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.landlord)
 
         response = self.client.patch(
-            f"/api/listings/{listing.id}/",
+            f"/api/v1/listings/{listing.id}/",
             data={"is_active": False},
             format="json",
         )
@@ -320,7 +320,7 @@ class ListingPermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.landlord)
 
         response = self.client.patch(
-            f"/api/listings/{listing.id}/",
+            f"/api/v1/listings/{listing.id}/",
             data={"is_active": False},
             format="json",
         )
@@ -337,7 +337,7 @@ class ListingPermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.other_landlord)
 
         response = self.client.patch(
-            f"/api/listings/{listing.id}/",
+            f"/api/v1/listings/{listing.id}/",
             data={"title": "Forbidden update"},
             format="json",
         )
@@ -352,7 +352,7 @@ class ListingPermissionAPITests(APITestCase):
         listing = self.create_listing(owner=self.landlord)
         self.client.force_authenticate(user=self.landlord)
 
-        response = self.client.delete(f"/api/listings/{listing.id}/")
+        response = self.client.delete(f"/api/v1/listings/{listing.id}/")
 
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Listing.objects.filter(pk=listing.pk).exists())
@@ -365,7 +365,7 @@ class ListingPermissionAPITests(APITestCase):
         )
         self.client.force_authenticate(user=self.landlord)
 
-        response = self.client.delete(f"/api/listings/{listing.id}/")
+        response = self.client.delete(f"/api/v1/listings/{listing.id}/")
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("detail", response.data)
@@ -376,7 +376,7 @@ class ListingPermissionAPITests(APITestCase):
         listing = self.create_listing(owner=self.landlord)
         self.client.force_authenticate(user=self.other_landlord)
 
-        response = self.client.delete(f"/api/listings/{listing.id}/")
+        response = self.client.delete(f"/api/v1/listings/{listing.id}/")
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertTrue(Listing.objects.filter(pk=listing.pk).exists())
@@ -393,7 +393,7 @@ class ListingPermissionAPITests(APITestCase):
         )
         self.client.force_authenticate(user=self.renter)
 
-        response = self.client.get("/api/listings/")
+        response = self.client.get("/api/v1/listings/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         listing_ids = [item["id"] for item in response.data["results"]]
@@ -411,7 +411,7 @@ class ListingPermissionAPITests(APITestCase):
             is_active=False,
         )
 
-        response = self.client.get("/api/listings/")
+        response = self.client.get("/api/v1/listings/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         listing_ids = [item["id"] for item in response.data["results"]]
@@ -421,7 +421,7 @@ class ListingPermissionAPITests(APITestCase):
     def test_anonymous_user_can_retrieve_active_listing(self):
         listing = self.create_listing(owner=self.landlord)
 
-        response = self.client.get(f"/api/listings/{listing.id}/")
+        response = self.client.get(f"/api/v1/listings/{listing.id}/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["id"], listing.id)
@@ -432,12 +432,12 @@ class ListingPermissionAPITests(APITestCase):
             is_active=False,
         )
 
-        response = self.client.get(f"/api/listings/{listing.id}/")
+        response = self.client.get(f"/api/v1/listings/{listing.id}/")
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_anonymous_user_cannot_view_my_listings(self):
-        response = self.client.get("/api/listings/my/")
+        response = self.client.get("/api/v1/listings/my/")
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
@@ -454,7 +454,7 @@ class ListingPermissionAPITests(APITestCase):
         )
         self.client.force_authenticate(user=self.landlord)
 
-        response = self.client.get("/api/listings/my/")
+        response = self.client.get("/api/v1/listings/my/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         listing_ids = [item["id"] for item in response.data["results"]]
@@ -468,7 +468,7 @@ class ListingPermissionAPITests(APITestCase):
         )
         self.client.force_authenticate(user=self.landlord)
 
-        response = self.client.get(f"/api/listings/{listing.id}/")
+        response = self.client.get(f"/api/v1/listings/{listing.id}/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertFalse(response.data["is_active"])
@@ -480,7 +480,7 @@ class ListingPermissionAPITests(APITestCase):
         )
         self.client.force_authenticate(user=self.other_landlord)
 
-        response = self.client.get(f"/api/listings/{listing.id}/")
+        response = self.client.get(f"/api/v1/listings/{listing.id}/")
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
@@ -496,7 +496,7 @@ class ListingPermissionAPITests(APITestCase):
         )
         self.client.force_authenticate(user=self.renter)
 
-        response = self.client.get("/api/listings/popular/")
+        response = self.client.get("/api/v1/listings/popular/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         listing_ids = [item["id"] for item in response.data["results"]]
@@ -551,7 +551,7 @@ class ListingSearchHistoryAPITests(APITestCase):
 
         response = self.client.get(
             (
-                "/api/listings/?search=Berlin&city=Berlin&min_price=100"
+                "/api/v1/listings/?search=Berlin&city=Berlin&min_price=100"
                 "&ordering=price_per_night&page=1"
             ),
         )
@@ -574,7 +574,7 @@ class ListingSearchHistoryAPITests(APITestCase):
     def test_listing_filter_without_search_does_not_create_search_history(self):
         self.client.force_authenticate(user=self.viewer)
 
-        response = self.client.get("/api/listings/?city=Berlin&min_price=100")
+        response = self.client.get("/api/v1/listings/?city=Berlin&min_price=100")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertFalse(SearchHistory.objects.exists())
@@ -582,13 +582,13 @@ class ListingSearchHistoryAPITests(APITestCase):
     def test_blank_listing_search_does_not_create_search_history(self):
         self.client.force_authenticate(user=self.viewer)
 
-        response = self.client.get("/api/listings/?search=+++")
+        response = self.client.get("/api/v1/listings/?search=+++")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertFalse(SearchHistory.objects.exists())
 
     def test_anonymous_listing_search_does_not_create_search_history(self):
-        response = self.client.get("/api/listings/?search=Berlin")
+        response = self.client.get("/api/v1/listings/?search=Berlin")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertFalse(SearchHistory.objects.exists())
@@ -631,7 +631,7 @@ class ListingViewHistoryAPITests(APITestCase):
     def test_listing_detail_creates_view_history_entry(self):
         self.client.force_authenticate(user=self.viewer)
 
-        response = self.client.get(f"/api/listings/{self.listing.id}/")
+        response = self.client.get(f"/api/v1/listings/{self.listing.id}/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["views_count"], 1)
@@ -645,8 +645,8 @@ class ListingViewHistoryAPITests(APITestCase):
     def test_repeated_listing_detail_view_updates_existing_entry(self):
         self.client.force_authenticate(user=self.viewer)
 
-        first_response = self.client.get(f"/api/listings/{self.listing.id}/")
-        second_response = self.client.get(f"/api/listings/{self.listing.id}/")
+        first_response = self.client.get(f"/api/v1/listings/{self.listing.id}/")
+        second_response = self.client.get(f"/api/v1/listings/{self.listing.id}/")
 
         self.assertEqual(first_response.status_code, status.HTTP_200_OK)
         self.assertEqual(second_response.status_code, status.HTTP_200_OK)
@@ -656,13 +656,13 @@ class ListingViewHistoryAPITests(APITestCase):
     def test_listing_list_does_not_create_view_history_entry(self):
         self.client.force_authenticate(user=self.viewer)
 
-        response = self.client.get("/api/listings/")
+        response = self.client.get("/api/v1/listings/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertFalse(ViewHistory.objects.exists())
 
     def test_anonymous_listing_detail_does_not_create_view_history_entry(self):
-        response = self.client.get(f"/api/listings/{self.listing.id}/")
+        response = self.client.get(f"/api/v1/listings/{self.listing.id}/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertFalse(ViewHistory.objects.exists())
@@ -740,7 +740,7 @@ class ListingReviewAPITests(APITestCase):
         )
         self.client.force_authenticate(user=self.viewer)
 
-        response = self.client.get(f"/api/listings/{self.listing.id}/reviews/")
+        response = self.client.get(f"/api/v1/listings/{self.listing.id}/reviews/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         review_ids = [item["id"] for item in response.data["results"]]
@@ -755,7 +755,7 @@ class ListingReviewAPITests(APITestCase):
             comment="Excellent apartment.",
         )
 
-        response = self.client.get(f"/api/listings/{self.listing.id}/reviews/")
+        response = self.client.get(f"/api/v1/listings/{self.listing.id}/reviews/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         review_ids = [item["id"] for item in response.data["results"]]
@@ -765,7 +765,7 @@ class ListingReviewAPITests(APITestCase):
         self.create_completed_booking(self.listing)
         self.client.force_authenticate(user=self.viewer)
 
-        response = self.client.get(f"/api/listings/{self.listing.id}/reviews/")
+        response = self.client.get(f"/api/v1/listings/{self.listing.id}/reviews/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertFalse(ViewHistory.objects.exists())

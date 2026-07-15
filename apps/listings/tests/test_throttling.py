@@ -64,11 +64,11 @@ class ListingThrottlingAPITests(APITestCase):
         self.client.force_authenticate(user=self.viewer)
 
         for _ in range(2):
-            response = self.client.get("/api/listings/?search=Berlin")
+            response = self.client.get("/api/v1/listings/?search=Berlin")
 
             self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        response = self.client.get("/api/listings/?search=Berlin")
+        response = self.client.get("/api/v1/listings/?search=Berlin")
 
         self.assertEqual(
             response.status_code,

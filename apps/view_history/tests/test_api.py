@@ -53,7 +53,7 @@ class ViewHistoryAPITests(APITestCase):
         self.client.force_authenticate(user=self.viewer)
 
         response = self.client.post(
-            "/api/view-history/",
+            "/api/v1/view-history/",
             data={"listing": self.listing.id},
             format="json",
         )
@@ -69,7 +69,7 @@ class ViewHistoryAPITests(APITestCase):
         self.client.force_authenticate(user=self.viewer)
 
         response = self.client.patch(
-            f"/api/view-history/{entry.id}/",
+            f"/api/v1/view-history/{entry.id}/",
             data={"listing": self.other_listing.id},
             format="json",
         )
@@ -85,7 +85,7 @@ class ViewHistoryAPITests(APITestCase):
         self.client.force_authenticate(user=self.viewer)
 
         response = self.client.post(
-            "/api/view-history/",
+            "/api/v1/view-history/",
             data={
                 "user": self.other_viewer.id,
                 "listing": self.listing.id,
@@ -103,7 +103,7 @@ class ViewHistoryAPITests(APITestCase):
 
     def test_anonymous_user_cannot_create_view_history_entry(self):
         response = self.client.post(
-            "/api/view-history/",
+            "/api/v1/view-history/",
             data={"listing": self.listing.id},
             format="json",
         )
@@ -122,7 +122,7 @@ class ViewHistoryAPITests(APITestCase):
         )
         self.client.force_authenticate(user=self.viewer)
 
-        response = self.client.get("/api/view-history/")
+        response = self.client.get("/api/v1/view-history/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         entry_ids = [item["id"] for item in response.data["results"]]
@@ -141,7 +141,7 @@ class ViewHistoryAPITests(APITestCase):
         self.client.force_authenticate(user=self.viewer)
 
         response = self.client.get(
-            f"/api/view-history/?listing={self.listing.id}",
+            f"/api/v1/view-history/?listing={self.listing.id}",
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -161,7 +161,7 @@ class ViewHistoryAPITests(APITestCase):
         )
         self.client.force_authenticate(user=self.viewer)
 
-        response = self.client.get("/api/view-history/popular-listings/")
+        response = self.client.get("/api/v1/view-history/popular-listings/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         first_result = response.data["results"][0]

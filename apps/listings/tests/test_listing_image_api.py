@@ -84,7 +84,7 @@ class ListingImagePermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.owner)
 
         response = self.client.post(
-            "/api/listings/images/",
+            "/api/v1/listings/images/",
             data={
                 "listing": self.listing.id,
                 "image": self.create_uploaded_image(),
@@ -100,7 +100,7 @@ class ListingImagePermissionAPITests(APITestCase):
 
     def test_anonymous_user_cannot_add_image(self):
         response = self.client.post(
-            "/api/listings/images/",
+            "/api/v1/listings/images/",
             data={
                 "listing": self.listing.id,
                 "image": self.create_uploaded_image(),
@@ -115,7 +115,7 @@ class ListingImagePermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.other_user)
 
         response = self.client.post(
-            "/api/listings/images/",
+            "/api/v1/listings/images/",
             data={
                 "listing": self.listing.id,
                 "image": self.create_uploaded_image(),
@@ -134,7 +134,7 @@ class ListingImagePermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.owner)
 
         response = self.client.patch(
-            f"/api/listings/images/{listing_image.id}/",
+            f"/api/v1/listings/images/{listing_image.id}/",
             data={"position": 5},
             format="json",
         )
@@ -155,7 +155,7 @@ class ListingImagePermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.owner)
 
         response = self.client.post(
-            "/api/listings/images/",
+            "/api/v1/listings/images/",
             data={
                 "listing": self.listing.id,
                 "image": self.create_uploaded_image(),
@@ -187,7 +187,7 @@ class ListingImagePermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.owner)
 
         response = self.client.patch(
-            f"/api/listings/images/{listing_image.id}/",
+            f"/api/v1/listings/images/{listing_image.id}/",
             data={"is_primary": True},
             format="json",
         )
@@ -212,7 +212,7 @@ class ListingImagePermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.owner)
 
         response = self.client.put(
-            f"/api/listings/images/{listing_image.id}/",
+            f"/api/v1/listings/images/{listing_image.id}/",
             data={
                 "listing": self.listing.id,
                 "image": self.create_uploaded_image("updated-image.gif"),
@@ -238,7 +238,7 @@ class ListingImagePermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.other_user)
 
         response = self.client.patch(
-            f"/api/listings/images/{listing_image.id}/",
+            f"/api/v1/listings/images/{listing_image.id}/",
             data={"position": 5},
             format="json",
         )
@@ -257,7 +257,7 @@ class ListingImagePermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.owner)
 
         response = self.client.patch(
-            f"/api/listings/images/{listing_image.id}/",
+            f"/api/v1/listings/images/{listing_image.id}/",
             data={"listing": self.other_listing.id},
             format="json",
         )
@@ -277,7 +277,7 @@ class ListingImagePermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.owner)
 
         response = self.client.put(
-            f"/api/listings/images/{listing_image.id}/",
+            f"/api/v1/listings/images/{listing_image.id}/",
             data={
                 "listing": self.other_listing.id,
                 "image": self.create_uploaded_image("updated-image.gif"),
@@ -303,7 +303,7 @@ class ListingImagePermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.owner)
 
         response = self.client.delete(
-            f"/api/listings/images/{listing_image.id}/",
+            f"/api/v1/listings/images/{listing_image.id}/",
         )
 
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
@@ -319,7 +319,7 @@ class ListingImagePermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.other_user)
 
         response = self.client.delete(
-            f"/api/listings/images/{listing_image.id}/",
+            f"/api/v1/listings/images/{listing_image.id}/",
         )
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
@@ -340,7 +340,7 @@ class ListingImagePermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.owner)
 
         response = self.client.get(
-            f"/api/listings/images/{listing_image.id}/",
+            f"/api/v1/listings/images/{listing_image.id}/",
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -359,7 +359,7 @@ class ListingImagePermissionAPITests(APITestCase):
         self.client.force_authenticate(user=self.other_user)
 
         response = self.client.get(
-            f"/api/listings/images/{listing_image.id}/",
+            f"/api/v1/listings/images/{listing_image.id}/",
         )
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
@@ -380,7 +380,7 @@ class ListingImagePermissionAPITests(APITestCase):
         )
         self.client.force_authenticate(user=self.other_user)
 
-        response = self.client.get("/api/listings/images/")
+        response = self.client.get("/api/v1/listings/images/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         image_ids = [item["id"] for item in response.data["results"]]

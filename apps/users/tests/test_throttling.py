@@ -34,7 +34,7 @@ class AuthThrottlingAPITests(APITestCase):
     def test_jwt_login_is_throttled(self):
         for _ in range(2):
             response = self.client.post(
-                "/api/auth/token/",
+                "/api/v1/auth/token/",
                 data={
                     "email": "missing@example.com",
                     "password": "WrongPassword123!",
@@ -48,7 +48,7 @@ class AuthThrottlingAPITests(APITestCase):
             )
 
         response = self.client.post(
-            "/api/auth/token/",
+            "/api/v1/auth/token/",
             data={
                 "email": "missing@example.com",
                 "password": "WrongPassword123!",
@@ -63,7 +63,7 @@ class AuthThrottlingAPITests(APITestCase):
 
     def test_registration_is_throttled(self):
         first_response = self.client.post(
-            "/api/users/register/",
+            "/api/v1/users/register/",
             data={
                 "email": "first@example.com",
                 "password": "Very-Strong-Password-123!",
@@ -77,7 +77,7 @@ class AuthThrottlingAPITests(APITestCase):
         self.assertEqual(first_response.status_code, status.HTTP_201_CREATED)
 
         second_response = self.client.post(
-            "/api/users/register/",
+            "/api/v1/users/register/",
             data={
                 "email": "second@example.com",
                 "password": "Very-Strong-Password-123!",
