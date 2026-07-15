@@ -1,4 +1,9 @@
+import logging
+
 from django.db.models import Count
+
+
+logger = logging.getLogger(__name__)
 
 
 def get_popular_listings(active_only=False, only_with_views=False):
@@ -28,6 +33,14 @@ def record_listing_view(user, listing, return_created=False):
         user=user,
         listing=listing,
         defaults={},
+    )
+    logger.debug(
+        "View history recorded: view_history_id=%s "
+        "user_id=%s listing_id=%s created=%s",
+        view_history.pk,
+        user.pk,
+        listing.pk,
+        created,
     )
 
     if return_created:

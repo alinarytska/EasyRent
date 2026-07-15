@@ -1,4 +1,5 @@
 from datetime import timedelta
+import logging
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -7,6 +8,9 @@ from rest_framework.exceptions import ValidationError as APIValidationError
 
 from apps.bookings.models import Booking
 from apps.listings.models import Listing
+
+
+logger = logging.getLogger(__name__)
 
 
 def calculate_booking_prices(listing, start_date, end_date):
@@ -40,6 +44,10 @@ def validate_booking_dates_are_available(
         )
 
     if overlapping_bookings.exists():
+        logger.warning(
+            "Booking date overlap detected for listing_id=%s",
+            listing.pk,
+        )
         raise APIValidationError(
             {
                 "non_field_errors": (
@@ -68,12 +76,19 @@ def create_booking(serializer, renter):
         end_date=end_date,
     )
 
-    return serializer.save(
+    booking = serializer.save(
         renter=renter,
         listing=locked_listing,
         price_per_night=price_per_night,
         total_price=total_price,
     )
+    logger.info(
+        "Booking created: booking_id=%s listing_id=%s renter_id=%s",
+        booking.pk,
+        locked_listing.pk,
+        renter.pk,
+    )
+    return booking
 
 
 @transaction.atomic
@@ -104,11 +119,17 @@ def update_booking(serializer):
         end_date=end_date,
     )
 
-    return serializer.save(
+    booking = serializer.save(
         listing=locked_listing,
         price_per_night=price_per_night,
         total_price=total_price,
     )
+    logger.info(
+        "Booking updated: booking_id=%s listing_id=%s",
+        booking.pk,
+        locked_listing.pk,
+    )
+    return booking
 
 
 def update_booking_status(
@@ -122,6 +143,11 @@ def update_booking_status(
 
     booking.status = new_status
     booking.save(update_fields=("status", "updated_at"))
+    logger.info(
+        "Booking status changed: booking_id=%s new_status=%s",
+        booking.pk,
+        new_status,
+    )
 
     return booking
 

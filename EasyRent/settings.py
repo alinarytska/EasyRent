@@ -9,6 +9,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env()
 environ.Env.read_env(BASE_DIR / ".env")
 
+LOGS_DIR = BASE_DIR / "logs"
+LOGS_DIR.mkdir(exist_ok=True)
+LOG_LEVEL = env("LOG_LEVEL", default="INFO")
+HTTP_LOG_LEVEL = env("HTTP_LOG_LEVEL", default="WARNING")
+DB_LOG_LEVEL = env("DB_LOG_LEVEL", default="WARNING")
+
 
 SECRET_KEY = env("SECRET_KEY")
 DEBUG = env.bool("DEBUG")
@@ -152,6 +158,81 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': False,
     'BLACKLIST_AFTER_ROTATION': False,
+}
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": (
+                "{levelname} {asctime} {name} "
+                "{module}.{funcName}:{lineno} - {message}"
+            ),
+            "style": "{",
+        },
+        "simple": {
+            "format": "{levelname} {name} - {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+        },
+        "app_file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": str(LOGS_DIR / "app.log"),
+            "maxBytes": 1024 * 1024 * 5,
+            "backupCount": 5,
+            "formatter": "verbose",
+            "encoding": "utf-8",
+        },
+        "http_file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": str(LOGS_DIR / "http.log"),
+            "maxBytes": 1024 * 1024 * 5,
+            "backupCount": 5,
+            "formatter": "verbose",
+            "encoding": "utf-8",
+        },
+        "db_file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": str(LOGS_DIR / "db.log"),
+            "maxBytes": 1024 * 1024 * 5,
+            "backupCount": 5,
+            "formatter": "verbose",
+            "encoding": "utf-8",
+        },
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console", "app_file"],
+            "level": LOG_LEVEL,
+            "propagate": False,
+        },
+        "django.request": {
+            "handlers": ["console", "http_file"],
+            "level": HTTP_LOG_LEVEL,
+            "propagate": False,
+        },
+        "django.server": {
+            "handlers": ["console", "http_file"],
+            "level": HTTP_LOG_LEVEL,
+            "propagate": False,
+        },
+        "django.db.backends": {
+            "handlers": ["db_file"],
+            "level": DB_LOG_LEVEL,
+            "propagate": False,
+        },
+        "apps": {
+            "handlers": ["console", "app_file"],
+            "level": LOG_LEVEL,
+            "propagate": False,
+        },
+    },
 }
 
 SPECTACULAR_SETTINGS = {

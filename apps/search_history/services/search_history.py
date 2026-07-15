@@ -1,4 +1,9 @@
+import logging
+
 from django.db.models import Count
+
+
+logger = logging.getLogger(__name__)
 
 
 IGNORED_SEARCH_HISTORY_PARAMS = {
@@ -42,11 +47,17 @@ def record_listing_search(user, query_params):
 
     from apps.search_history.models import SearchHistory
 
-    return SearchHistory.objects.create(
+    search_history = SearchHistory.objects.create(
         user=user,
         query=query,
         search_filters=build_search_filters(query_params),
     )
+    logger.debug(
+        "Search history recorded: search_history_id=%s user_id=%s",
+        search_history.pk,
+        user.pk,
+    )
+    return search_history
 
 
 def get_popular_search_queries():

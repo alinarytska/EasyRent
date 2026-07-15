@@ -1,3 +1,5 @@
+import logging
+
 from django.db import transaction
 from rest_framework_simplejwt.token_blacklist.models import (
     BlacklistedToken,
@@ -5,11 +7,20 @@ from rest_framework_simplejwt.token_blacklist.models import (
 )
 
 
+logger = logging.getLogger(__name__)
+
+
 def _blacklist_user_tokens(user):
     outstanding_tokens = OutstandingToken.objects.filter(user=user)
 
     for outstanding_token in outstanding_tokens:
         BlacklistedToken.objects.get_or_create(token=outstanding_token)
+
+    logger.info(
+        "Outstanding tokens blacklisted for user_id=%s count=%s",
+        user.pk,
+        outstanding_tokens.count(),
+    )
 
 
 def deactivate_user_account(user):
@@ -23,4 +34,5 @@ def deactivate_user_account(user):
 
         _blacklist_user_tokens(locked_user)
 
+    logger.info("User account deactivated: user_id=%s", locked_user.pk)
     return locked_user
