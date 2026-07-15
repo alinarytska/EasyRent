@@ -260,6 +260,36 @@ class BookingPermissionAPITests(APITestCase):
 
         self.assertEqual(booking.listing, self.listing)
 
+    def test_listing_owner_cannot_change_booking_listing_with_put(self):
+        booking = self.create_booking()
+        another_listing = self.create_listing(
+            owner=self.landlord,
+            title="Another apartment",
+            street="Torstrasse",
+            house_number="2",
+        )
+        self.client.force_authenticate(user=self.landlord)
+
+        response = self.client.put(
+            f"/api/bookings/{booking.id}/",
+            data={
+                "listing": another_listing.id,
+                "start_date": "2026-08-01",
+                "end_date": "2026-08-05",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("listing", response.data)
+
+        booking.refresh_from_db()
+
+        self.assertEqual(booking.listing, self.listing)
+        self.assertEqual(booking.start_date, date(2026, 8, 1))
+        self.assertEqual(booking.end_date, date(2026, 8, 4))
+        self.assertEqual(booking.total_price, Decimal("360.00"))
+
     def test_listing_owner_cannot_update_confirmed_booking_directly(self):
         booking = self.create_booking(status=Booking.Status.CONFIRMED)
         self.client.force_authenticate(user=self.landlord)
@@ -275,6 +305,29 @@ class BookingPermissionAPITests(APITestCase):
 
         booking.refresh_from_db()
 
+        self.assertEqual(booking.end_date, date(2026, 8, 4))
+        self.assertEqual(booking.total_price, Decimal("360.00"))
+
+    def test_listing_owner_cannot_update_confirmed_booking_with_put(self):
+        booking = self.create_booking(status=Booking.Status.CONFIRMED)
+        self.client.force_authenticate(user=self.landlord)
+
+        response = self.client.put(
+            f"/api/bookings/{booking.id}/",
+            data={
+                "listing": self.listing.id,
+                "start_date": "2026-08-01",
+                "end_date": "2026-08-05",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("status", response.data)
+
+        booking.refresh_from_db()
+
+        self.assertEqual(booking.start_date, date(2026, 8, 1))
         self.assertEqual(booking.end_date, date(2026, 8, 4))
         self.assertEqual(booking.total_price, Decimal("360.00"))
 

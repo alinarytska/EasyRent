@@ -199,6 +199,37 @@ class ListingImagePermissionAPITests(APITestCase):
 
         self.assertFalse(listing_image.is_primary)
 
+    def test_owner_cannot_mark_second_image_as_primary_with_put(self):
+        ListingImage.objects.create(
+            listing=self.listing,
+            image="primary-image.jpg",
+            is_primary=True,
+        )
+        listing_image = ListingImage.objects.create(
+            listing=self.listing,
+            image="regular-image.jpg",
+        )
+        self.client.force_authenticate(user=self.owner)
+
+        response = self.client.put(
+            f"/api/listings/images/{listing_image.id}/",
+            data={
+                "listing": self.listing.id,
+                "image": self.create_uploaded_image("updated-image.gif"),
+                "is_primary": True,
+                "position": 1,
+            },
+            format="multipart",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("is_primary", response.data)
+
+        listing_image.refresh_from_db()
+
+        self.assertFalse(listing_image.is_primary)
+        self.assertEqual(listing_image.listing, self.listing)
+
     def test_other_user_cannot_update_listing_image(self):
         listing_image = ListingImage.objects.create(
             listing=self.listing,
@@ -237,6 +268,32 @@ class ListingImagePermissionAPITests(APITestCase):
         listing_image.refresh_from_db()
 
         self.assertEqual(listing_image.listing, self.listing)
+
+    def test_owner_cannot_move_image_to_another_listing_with_put(self):
+        listing_image = ListingImage.objects.create(
+            listing=self.listing,
+            image="test-image.jpg",
+        )
+        self.client.force_authenticate(user=self.owner)
+
+        response = self.client.put(
+            f"/api/listings/images/{listing_image.id}/",
+            data={
+                "listing": self.other_listing.id,
+                "image": self.create_uploaded_image("updated-image.gif"),
+                "is_primary": False,
+                "position": 1,
+            },
+            format="multipart",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("listing", response.data)
+
+        listing_image.refresh_from_db()
+
+        self.assertEqual(listing_image.listing, self.listing)
+        self.assertEqual(listing_image.position, 0)
 
     def test_owner_can_delete_own_listing_image(self):
         listing_image = ListingImage.objects.create(
