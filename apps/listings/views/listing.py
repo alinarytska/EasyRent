@@ -1,4 +1,5 @@
 from django.db.models import Count
+from drf_spectacular.utils import extend_schema
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
@@ -9,6 +10,8 @@ from apps.listings.filters import ListingFilter
 from apps.listings.models import Listing
 from apps.listings.permissions import ListingPermission
 from apps.listings.serializers import ListingSerializer
+from apps.reviews.models import Review
+from apps.reviews.serializers import ReviewSerializer
 from apps.search_history.services import record_listing_search
 from apps.view_history.services import record_listing_view
 
@@ -61,6 +64,28 @@ class ListingViewSet(viewsets.ModelViewSet):
             instance.views_count = instance.view_history.count()
 
         serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
+    @extend_schema(responses=ReviewSerializer(many=True))
+    @action(detail=True, methods=("get",), url_path="reviews")
+    def reviews(self, request, pk=None):
+        listing = self.get_object()
+        queryset = (
+            Review.objects.select_related(
+                "booking",
+                "booking__listing",
+                "booking__renter",
+            )
+            .filter(booking__listing=listing)
+            .order_by("-created_at", "-id")
+        )
+        page = self.paginate_queryset(queryset)
+
+        if page is not None:
+            serializer = ReviewSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = ReviewSerializer(queryset, many=True)
         return Response(serializer.data)
 
     @action(detail=False, methods=("get",), url_path="my")

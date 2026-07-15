@@ -1,10 +1,13 @@
+from datetime import date
 from decimal import Decimal
 
 from django.contrib.auth.models import Group
 from rest_framework import status
 from rest_framework.test import APITestCase
 
+from apps.bookings.models import Booking
 from apps.listings.models import Listing
+from apps.reviews.models import Review
 from apps.search_history.models import SearchHistory
 from apps.users.models import User
 from apps.view_history.models import ViewHistory
@@ -328,6 +331,100 @@ class ListingViewHistoryAPITests(APITestCase):
         self.client.force_authenticate(user=self.viewer)
 
         response = self.client.get("/api/listings/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(ViewHistory.objects.exists())
+
+
+class ListingReviewAPITests(APITestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user(
+            email="owner@example.com",
+            password="strong-test-password",
+            first_name="Anna",
+            last_name="Smith",
+        )
+        self.viewer = User.objects.create_user(
+            email="viewer@example.com",
+            password="strong-test-password",
+            first_name="Bob",
+            last_name="Green",
+        )
+        self.renter = User.objects.create_user(
+            email="renter@example.com",
+            password="strong-test-password",
+            first_name="Maria",
+            last_name="Brown",
+        )
+        self.listing = self.create_listing(title="Berlin apartment")
+        self.other_listing = self.create_listing(title="Hamburg apartment")
+
+    def create_listing(self, **overrides):
+        data = {
+            "owner": self.owner,
+            "title": "Apartment in Berlin",
+            "description": "Bright apartment near the city center.",
+            "property_type": Listing.PropertyType.APARTMENT,
+            "price_per_night": Decimal("120.00"),
+            "rooms": 2,
+            "city": "Berlin",
+            "district": "Mitte",
+            "postal_code": "10115",
+            "street": "Invalidenstrasse",
+            "house_number": "1",
+        }
+        data.update(overrides)
+        return Listing.objects.create(**data)
+
+    def create_completed_booking(self, listing, **overrides):
+        data = {
+            "listing": listing,
+            "renter": self.renter,
+            "start_date": date(2026, 8, 1),
+            "end_date": date(2026, 8, 4),
+            "price_per_night": Decimal("120.00"),
+            "total_price": Decimal("360.00"),
+            "status": Booking.Status.COMPLETED,
+        }
+        data.update(overrides)
+        return Booking.objects.create(**data)
+
+    def test_listing_reviews_returns_reviews_for_selected_listing(self):
+        booking = self.create_completed_booking(self.listing)
+        review = Review.objects.create(
+            booking=booking,
+            rating=5,
+            comment="Excellent apartment.",
+        )
+        other_booking = self.create_completed_booking(
+            self.other_listing,
+            start_date=date(2026, 8, 5),
+            end_date=date(2026, 8, 8),
+        )
+        other_review = Review.objects.create(
+            booking=other_booking,
+            rating=3,
+            comment="Good apartment.",
+        )
+        self.client.force_authenticate(user=self.viewer)
+
+        response = self.client.get(f"/api/listings/{self.listing.id}/reviews/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        review_ids = [item["id"] for item in response.data["results"]]
+        self.assertIn(review.id, review_ids)
+        self.assertNotIn(other_review.id, review_ids)
+
+    def test_anonymous_user_cannot_view_listing_reviews(self):
+        response = self.client.get(f"/api/listings/{self.listing.id}/reviews/")
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_listing_reviews_endpoint_does_not_create_view_history(self):
+        self.create_completed_booking(self.listing)
+        self.client.force_authenticate(user=self.viewer)
+
+        response = self.client.get(f"/api/listings/{self.listing.id}/reviews/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertFalse(ViewHistory.objects.exists())
