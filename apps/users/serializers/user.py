@@ -97,43 +97,21 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
         )
 
 
-class UserGroupUpdateSerializer(serializers.Serializer):
-    groups = serializers.ListField(
-        child=serializers.ChoiceField(
-            choices=(
-                User.RENTERS_GROUP,
-                User.LANDLORDS_GROUP,
-            )
-        ),
-        allow_empty=True,
-    )
-
-    def validate_groups(self, groups):
-        if len(groups) != len(set(groups)):
-            raise serializers.ValidationError(
-                "Group names must be unique.",
-            )
-
-        return groups
-
-    def update(self, instance, validated_data):
-        selected_group_names = validated_data["groups"]
-        rental_group_names = (
+class UserGroupAddSerializer(serializers.Serializer):
+    group = serializers.ChoiceField(
+        choices=(
             User.RENTERS_GROUP,
             User.LANDLORDS_GROUP,
-        )
-        selected_groups = [
-            Group.objects.get_or_create(name=group_name)[0]
-            for group_name in selected_group_names
-        ]
-        other_groups = instance.groups.exclude(
-            name__in=rental_group_names,
-        )
+        ),
+    )
 
-        instance.groups.set([*other_groups, *selected_groups])
+    def update(self, instance, validated_data):
+        group_name = validated_data["group"]
+        group, _ = Group.objects.get_or_create(name=group_name)
+        instance.groups.add(group)
         return instance
 
     def create(self, validated_data):
         raise NotImplementedError(
-            "UserGroupUpdateSerializer only updates existing users."
+            "UserGroupAddSerializer only updates existing users."
         )

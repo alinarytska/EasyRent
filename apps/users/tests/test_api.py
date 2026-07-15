@@ -329,12 +329,12 @@ class CurrentUserGroupAPITests(APITestCase):
             last_name="Smith",
         )
 
-    def test_user_can_join_renters_group(self):
+    def test_user_can_add_renters_group(self):
         self.client.force_authenticate(user=self.user)
 
-        response = self.client.patch(
+        response = self.client.post(
             "/api/users/me/groups/",
-            data={"groups": [User.RENTERS_GROUP]},
+            data={"group": User.RENTERS_GROUP},
             format="json",
         )
 
@@ -343,17 +343,13 @@ class CurrentUserGroupAPITests(APITestCase):
         self.assertTrue(response.data["can_rent"])
         self.assertFalse(response.data["can_create_listing"])
 
-    def test_user_can_join_both_rental_groups(self):
+    def test_user_can_add_landlords_group_without_losing_renters_group(self):
         self.client.force_authenticate(user=self.user)
+        self.user.groups.add(Group.objects.get(name=User.RENTERS_GROUP))
 
-        response = self.client.patch(
+        response = self.client.post(
             "/api/users/me/groups/",
-            data={
-                "groups": [
-                    User.RENTERS_GROUP,
-                    User.LANDLORDS_GROUP,
-                ]
-            },
+            data={"group": User.LANDLORDS_GROUP},
             format="json",
         )
 
@@ -368,41 +364,53 @@ class CurrentUserGroupAPITests(APITestCase):
         self.assertTrue(response.data["can_rent"])
         self.assertTrue(response.data["can_create_listing"])
 
-    def test_user_can_clear_rental_groups(self):
+    def test_adding_existing_group_is_idempotent(self):
         self.client.force_authenticate(user=self.user)
-        self.user.groups.add(
-            Group.objects.get(name=User.RENTERS_GROUP),
-            Group.objects.get(name=User.LANDLORDS_GROUP),
-        )
+        self.user.groups.add(Group.objects.get(name=User.RENTERS_GROUP))
 
-        response = self.client.patch(
+        response = self.client.post(
             "/api/users/me/groups/",
-            data={"groups": []},
+            data={"group": User.RENTERS_GROUP},
             format="json",
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["rental_groups"], [])
-        self.assertFalse(response.data["can_rent"])
+        self.assertEqual(response.data["rental_groups"], [User.RENTERS_GROUP])
+        self.assertEqual(
+            self.user.groups.filter(name=User.RENTERS_GROUP).count(),
+            1,
+        )
+        self.assertTrue(response.data["can_rent"])
         self.assertFalse(response.data["can_create_listing"])
 
     def test_user_cannot_add_unknown_group(self):
         self.client.force_authenticate(user=self.user)
 
-        response = self.client.patch(
+        response = self.client.post(
             "/api/users/me/groups/",
-            data={"groups": ["Admins"]},
+            data={"group": "Admins"},
             format="json",
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("groups", response.data)
+        self.assertIn("group", response.data)
 
-    def test_anonymous_user_cannot_update_groups(self):
+    def test_anonymous_user_cannot_add_group(self):
+        response = self.client.post(
+            "/api/users/me/groups/",
+            data={"group": User.RENTERS_GROUP},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_user_cannot_replace_groups_with_patch(self):
+        self.client.force_authenticate(user=self.user)
+
         response = self.client.patch(
             "/api/users/me/groups/",
             data={"groups": [User.RENTERS_GROUP]},
             format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)

@@ -1,6 +1,6 @@
 from apps.users.serializers.auth import JWTLogoutSerializer
 from apps.users.serializers.user import (
-    UserGroupUpdateSerializer,
+    UserGroupAddSerializer,
     UserProfileUpdateSerializer,
     UserRegistrationSerializer,
     UserSerializer,
@@ -9,7 +9,7 @@ from apps.users.serializers.user import (
 
 __all__ = [
     "JWTLogoutSerializer",
-    "UserGroupUpdateSerializer",
+    "UserGroupAddSerializer",
     "UserProfileUpdateSerializer",
     "UserRegistrationSerializer",
     "UserSerializer",
