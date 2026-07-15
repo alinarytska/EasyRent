@@ -259,6 +259,35 @@ class ReviewPermissionAPITests(APITestCase):
 
         self.assertEqual(review.booking, self.completed_booking)
 
+    def test_author_cannot_change_review_booking_with_put(self):
+        review = self.create_review()
+        another_completed_booking = self.create_booking(
+            renter=self.renter,
+            start_date=date(2026, 8, 13),
+            end_date=date(2026, 8, 16),
+            status=Booking.Status.COMPLETED,
+        )
+        self.client.force_authenticate(user=self.renter)
+
+        response = self.client.put(
+            f"/api/reviews/{review.id}/",
+            data={
+                "booking": another_completed_booking.id,
+                "rating": 4,
+                "comment": "Updated review.",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("booking", response.data)
+
+        review.refresh_from_db()
+
+        self.assertEqual(review.booking, self.completed_booking)
+        self.assertEqual(review.rating, 5)
+        self.assertEqual(review.comment, "Excellent apartment.")
+
     def test_author_can_delete_own_review(self):
         review = self.create_review()
         self.client.force_authenticate(user=self.renter)
