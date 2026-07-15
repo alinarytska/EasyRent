@@ -41,3 +41,30 @@ class ListingSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         )
+
+    def validate(self, attrs):
+        if (
+            self.instance
+            and self.instance.is_active
+            and attrs.get("is_active") is False
+        ):
+            from apps.bookings.models import Booking
+
+            has_active_bookings = self.instance.bookings.filter(
+                status__in=(
+                    Booking.Status.PENDING,
+                    Booking.Status.CONFIRMED,
+                )
+            ).exists()
+
+            if has_active_bookings:
+                raise serializers.ValidationError(
+                    {
+                        "is_active": (
+                            "Listing cannot be deactivated while it has "
+                            "pending or confirmed bookings."
+                        )
+                    }
+                )
+
+        return attrs

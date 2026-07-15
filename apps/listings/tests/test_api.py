@@ -73,6 +73,19 @@ class ListingPermissionAPITests(APITestCase):
         data.update(overrides)
         return Listing.objects.create(**data)
 
+    def create_booking(self, listing, **overrides):
+        data = {
+            "listing": listing,
+            "renter": self.renter,
+            "start_date": date(2026, 8, 1),
+            "end_date": date(2026, 8, 4),
+            "price_per_night": Decimal("120.00"),
+            "total_price": Decimal("360.00"),
+            "status": Booking.Status.PENDING,
+        }
+        data.update(overrides)
+        return Booking.objects.create(**data)
+
     def test_landlord_can_create_listing(self):
         self.client.force_authenticate(user=self.landlord)
 
@@ -148,6 +161,176 @@ class ListingPermissionAPITests(APITestCase):
         listing.refresh_from_db()
 
         self.assertEqual(listing.title, "Updated apartment")
+
+    def test_owner_cannot_update_listing_with_invalid_price(self):
+        listing = self.create_listing(owner=self.landlord)
+        self.client.force_authenticate(user=self.landlord)
+
+        response = self.client.patch(
+            f"/api/listings/{listing.id}/",
+            data={"price_per_night": "0.00"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("price_per_night", response.data)
+
+        listing.refresh_from_db()
+
+        self.assertEqual(listing.price_per_night, Decimal("120.00"))
+
+    def test_owner_cannot_update_listing_with_invalid_rooms_count(self):
+        listing = self.create_listing(owner=self.landlord)
+        self.client.force_authenticate(user=self.landlord)
+
+        response = self.client.patch(
+            f"/api/listings/{listing.id}/",
+            data={"rooms": 0},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("rooms", response.data)
+
+        listing.refresh_from_db()
+
+        self.assertEqual(listing.rooms, 2)
+
+    def test_owner_cannot_update_listing_with_too_many_rooms(self):
+        listing = self.create_listing(owner=self.landlord)
+        self.client.force_authenticate(user=self.landlord)
+
+        response = self.client.patch(
+            f"/api/listings/{listing.id}/",
+            data={"rooms": 51},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("rooms", response.data)
+
+        listing.refresh_from_db()
+
+        self.assertEqual(listing.rooms, 2)
+
+    def test_owner_cannot_update_listing_with_invalid_postal_code(self):
+        listing = self.create_listing(owner=self.landlord)
+        self.client.force_authenticate(user=self.landlord)
+
+        response = self.client.patch(
+            f"/api/listings/{listing.id}/",
+            data={"postal_code": "1234"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("postal_code", response.data)
+
+        listing.refresh_from_db()
+
+        self.assertEqual(listing.postal_code, "10115")
+
+    def test_owner_cannot_update_listing_with_invalid_property_type(self):
+        listing = self.create_listing(owner=self.landlord)
+        self.client.force_authenticate(user=self.landlord)
+
+        response = self.client.patch(
+            f"/api/listings/{listing.id}/",
+            data={"property_type": "castle"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("property_type", response.data)
+
+        listing.refresh_from_db()
+
+        self.assertEqual(listing.property_type, Listing.PropertyType.APARTMENT)
+
+    def test_owner_cannot_change_listing_owner(self):
+        listing = self.create_listing(owner=self.landlord)
+        self.client.force_authenticate(user=self.landlord)
+
+        response = self.client.patch(
+            f"/api/listings/{listing.id}/",
+            data={"owner": self.other_landlord.id},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        listing.refresh_from_db()
+
+        self.assertEqual(listing.owner, self.landlord)
+
+    def test_owner_cannot_deactivate_listing_with_pending_booking(self):
+        listing = self.create_listing(owner=self.landlord)
+        self.create_booking(listing=listing, status=Booking.Status.PENDING)
+        self.client.force_authenticate(user=self.landlord)
+
+        response = self.client.patch(
+            f"/api/listings/{listing.id}/",
+            data={"is_active": False},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("is_active", response.data)
+
+        listing.refresh_from_db()
+
+        self.assertTrue(listing.is_active)
+
+    def test_owner_cannot_deactivate_listing_with_confirmed_booking(self):
+        listing = self.create_listing(owner=self.landlord)
+        self.create_booking(listing=listing, status=Booking.Status.CONFIRMED)
+        self.client.force_authenticate(user=self.landlord)
+
+        response = self.client.patch(
+            f"/api/listings/{listing.id}/",
+            data={"is_active": False},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("is_active", response.data)
+
+        listing.refresh_from_db()
+
+        self.assertTrue(listing.is_active)
+
+    def test_owner_can_deactivate_listing_with_closed_bookings(self):
+        listing = self.create_listing(owner=self.landlord)
+        self.create_booking(
+            listing=listing,
+            status=Booking.Status.CANCELLED,
+        )
+        self.create_booking(
+            listing=listing,
+            start_date=date(2026, 8, 5),
+            end_date=date(2026, 8, 8),
+            status=Booking.Status.COMPLETED,
+        )
+        self.create_booking(
+            listing=listing,
+            start_date=date(2026, 8, 9),
+            end_date=date(2026, 8, 12),
+            status=Booking.Status.REJECTED,
+        )
+        self.client.force_authenticate(user=self.landlord)
+
+        response = self.client.patch(
+            f"/api/listings/{listing.id}/",
+            data={"is_active": False},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data["is_active"])
+
+        listing.refresh_from_db()
+
+        self.assertFalse(listing.is_active)
 
     def test_other_user_cannot_update_listing(self):
         listing = self.create_listing(owner=self.landlord)
