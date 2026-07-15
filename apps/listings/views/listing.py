@@ -1,4 +1,4 @@
-from django.db.models import Count
+from django.db.models import Count, Q
 from drf_spectacular.utils import extend_schema
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.decorators import action
@@ -37,12 +37,33 @@ class ListingViewSet(viewsets.ModelViewSet):
     ordering = ("-created_at",)
 
     def get_queryset(self):
-        return (
+        queryset = (
             Listing.objects.select_related("owner")
             .prefetch_related("images")
             .annotate(views_count=Count("view_history"))
             .all()
         )
+        user = self.request.user
+        action = getattr(self, "action", None)
+
+        if not user.is_authenticated:
+            return queryset.none()
+
+        if user.is_staff or action == "my_listings":
+            return queryset
+
+        if action in (
+            "retrieve",
+            "update",
+            "partial_update",
+            "destroy",
+            "reviews",
+        ):
+            return queryset.filter(
+                Q(is_active=True) | Q(owner=user),
+            )
+
+        return queryset.active()
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
@@ -97,7 +118,7 @@ class ListingViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=("get",), url_path="popular")
     def popular(self, request):
-        queryset = get_popular_listings()
+        queryset = get_popular_listings(active_only=True)
         page = self.paginate_queryset(queryset)
 
         if page is not None:

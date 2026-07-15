@@ -216,3 +216,63 @@ class ListingImagePermissionAPITests(APITestCase):
         self.assertTrue(
             ListingImage.objects.filter(pk=listing_image.pk).exists()
         )
+
+    def test_owner_can_view_image_for_inactive_listing(self):
+        inactive_listing = self.create_listing(
+            owner=self.owner,
+            title="Inactive apartment",
+            is_active=False,
+        )
+        listing_image = ListingImage.objects.create(
+            listing=inactive_listing,
+            image="test-image.jpg",
+        )
+        self.client.force_authenticate(user=self.owner)
+
+        response = self.client.get(
+            f"/api/listings/images/{listing_image.id}/",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["listing"], inactive_listing.id)
+
+    def test_other_user_cannot_view_image_for_inactive_listing(self):
+        inactive_listing = self.create_listing(
+            owner=self.owner,
+            title="Inactive apartment",
+            is_active=False,
+        )
+        listing_image = ListingImage.objects.create(
+            listing=inactive_listing,
+            image="test-image.jpg",
+        )
+        self.client.force_authenticate(user=self.other_user)
+
+        response = self.client.get(
+            f"/api/listings/images/{listing_image.id}/",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_image_list_hides_inactive_listing_images_from_other_user(self):
+        active_listing_image = ListingImage.objects.create(
+            listing=self.listing,
+            image="active-image.jpg",
+        )
+        inactive_listing = self.create_listing(
+            owner=self.owner,
+            title="Inactive apartment",
+            is_active=False,
+        )
+        inactive_listing_image = ListingImage.objects.create(
+            listing=inactive_listing,
+            image="inactive-image.jpg",
+        )
+        self.client.force_authenticate(user=self.other_user)
+
+        response = self.client.get("/api/listings/images/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        image_ids = [item["id"] for item in response.data["results"]]
+        self.assertIn(active_listing_image.id, image_ids)
+        self.assertNotIn(inactive_listing_image.id, image_ids)

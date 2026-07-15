@@ -183,6 +183,87 @@ class ListingPermissionAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertTrue(Listing.objects.filter(pk=listing.pk).exists())
 
+    def test_listing_list_shows_only_active_listings(self):
+        active_listing = self.create_listing(
+            owner=self.landlord,
+            title="Active apartment",
+        )
+        inactive_listing = self.create_listing(
+            owner=self.landlord,
+            title="Inactive apartment",
+            is_active=False,
+        )
+        self.client.force_authenticate(user=self.renter)
+
+        response = self.client.get("/api/listings/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        listing_ids = [item["id"] for item in response.data["results"]]
+        self.assertIn(active_listing.id, listing_ids)
+        self.assertNotIn(inactive_listing.id, listing_ids)
+
+    def test_owner_can_see_inactive_listing_in_my_listings(self):
+        inactive_listing = self.create_listing(
+            owner=self.landlord,
+            title="Inactive apartment",
+            is_active=False,
+        )
+        other_inactive_listing = self.create_listing(
+            owner=self.other_landlord,
+            title="Other inactive apartment",
+            is_active=False,
+        )
+        self.client.force_authenticate(user=self.landlord)
+
+        response = self.client.get("/api/listings/my/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        listing_ids = [item["id"] for item in response.data["results"]]
+        self.assertIn(inactive_listing.id, listing_ids)
+        self.assertNotIn(other_inactive_listing.id, listing_ids)
+
+    def test_owner_can_retrieve_own_inactive_listing(self):
+        listing = self.create_listing(
+            owner=self.landlord,
+            is_active=False,
+        )
+        self.client.force_authenticate(user=self.landlord)
+
+        response = self.client.get(f"/api/listings/{listing.id}/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data["is_active"])
+
+    def test_other_user_cannot_retrieve_inactive_listing(self):
+        listing = self.create_listing(
+            owner=self.landlord,
+            is_active=False,
+        )
+        self.client.force_authenticate(user=self.other_landlord)
+
+        response = self.client.get(f"/api/listings/{listing.id}/")
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_popular_listings_show_only_active_listings(self):
+        active_listing = self.create_listing(
+            owner=self.landlord,
+            title="Active apartment",
+        )
+        inactive_listing = self.create_listing(
+            owner=self.landlord,
+            title="Inactive apartment",
+            is_active=False,
+        )
+        self.client.force_authenticate(user=self.renter)
+
+        response = self.client.get("/api/listings/popular/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        listing_ids = [item["id"] for item in response.data["results"]]
+        self.assertIn(active_listing.id, listing_ids)
+        self.assertNotIn(inactive_listing.id, listing_ids)
+
 
 class ListingSearchHistoryAPITests(APITestCase):
     def setUp(self):

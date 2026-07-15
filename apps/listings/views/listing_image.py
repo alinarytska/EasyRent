@@ -1,3 +1,4 @@
+from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from rest_framework.exceptions import PermissionDenied
@@ -27,10 +28,21 @@ class ListingImageViewSet(viewsets.ModelViewSet):
     )
 
     def get_queryset(self):
-        return ListingImage.objects.select_related(
+        queryset = ListingImage.objects.select_related(
             "listing",
             "listing__owner",
         ).all()
+        user = self.request.user
+
+        if not user.is_authenticated:
+            return queryset.none()
+
+        if user.is_staff:
+            return queryset
+
+        return queryset.filter(
+            Q(listing__is_active=True) | Q(listing__owner=user),
+        )
 
     def perform_create(self, serializer):
         listing = serializer.validated_data["listing"]
