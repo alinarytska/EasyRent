@@ -86,6 +86,33 @@ class ListingPermissionAPITests(APITestCase):
             ).exists()
         )
 
+    def test_anonymous_user_cannot_create_listing(self):
+        response = self.client.post(
+            "/api/listings/",
+            data=self.build_listing_payload(),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertFalse(
+            Listing.objects.filter(title="Apartment in Berlin").exists()
+        )
+
+    def test_landlord_cannot_create_listing_for_another_owner(self):
+        self.client.force_authenticate(user=self.landlord)
+
+        response = self.client.post(
+            "/api/listings/",
+            data=self.build_listing_payload(owner=self.other_landlord.id),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["owner"], self.landlord.id)
+        self.assertFalse(
+            Listing.objects.filter(owner=self.other_landlord).exists()
+        )
+
     def test_user_without_landlord_group_cannot_create_listing(self):
         self.client.force_authenticate(user=self.renter)
 

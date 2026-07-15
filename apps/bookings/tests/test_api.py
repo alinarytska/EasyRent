@@ -31,6 +31,15 @@ class BookingPermissionAPITests(APITestCase):
         self.renter.groups.add(
             Group.objects.get(name=User.RENTERS_GROUP),
         )
+        self.other_renter = User.objects.create_user(
+            email="other-renter@example.com",
+            password="strong-test-password",
+            first_name="John",
+            last_name="White",
+        )
+        self.other_renter.groups.add(
+            Group.objects.get(name=User.RENTERS_GROUP),
+        )
         self.user_without_renter_group = User.objects.create_user(
             email="regular@example.com",
             password="strong-test-password",
@@ -91,6 +100,24 @@ class BookingPermissionAPITests(APITestCase):
         self.assertEqual(response.data["listing"], self.listing.id)
         self.assertEqual(response.data["price_per_night"], "120.00")
         self.assertEqual(response.data["total_price"], "360.00")
+
+    def test_renter_cannot_create_booking_for_another_user(self):
+        self.client.force_authenticate(user=self.renter)
+
+        response = self.client.post(
+            "/api/bookings/",
+            data=self.build_booking_payload(renter=self.other_renter.id),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["renter"], self.renter.id)
+        self.assertFalse(
+            Booking.objects.filter(
+                renter=self.other_renter,
+                listing=self.listing,
+            ).exists()
+        )
 
     def test_user_without_renter_group_cannot_create_booking(self):
         self.client.force_authenticate(user=self.user_without_renter_group)
@@ -157,6 +184,24 @@ class BookingPermissionAPITests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(Booking.objects.count(), 1)
+
+    def test_unrelated_user_cannot_retrieve_booking(self):
+        booking = self.create_booking()
+        self.client.force_authenticate(user=self.other_renter)
+
+        response = self.client.get(f"/api/bookings/{booking.id}/")
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_unrelated_user_does_not_see_booking_in_list(self):
+        booking = self.create_booking()
+        self.client.force_authenticate(user=self.other_renter)
+
+        response = self.client.get("/api/bookings/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        booking_ids = [item["id"] for item in response.data["results"]]
+        self.assertNotIn(booking.id, booking_ids)
 
     def test_listing_owner_can_update_booking(self):
         booking = self.create_booking()
@@ -269,6 +314,18 @@ class BookingPermissionAPITests(APITestCase):
         response = self.client.post(f"/api/bookings/{booking.id}/reject/")
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        booking.refresh_from_db()
+
+        self.assertEqual(booking.status, Booking.Status.PENDING)
+
+    def test_unrelated_user_cannot_cancel_booking(self):
+        booking = self.create_booking(status=Booking.Status.PENDING)
+        self.client.force_authenticate(user=self.other_renter)
+
+        response = self.client.post(f"/api/bookings/{booking.id}/cancel/")
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
         booking.refresh_from_db()
 

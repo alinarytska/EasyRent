@@ -98,6 +98,19 @@ class ListingImagePermissionAPITests(APITestCase):
         self.assertEqual(response.data["listing_owner"], self.owner.id)
         self.assertEqual(self.listing.images.count(), 1)
 
+    def test_anonymous_user_cannot_add_image(self):
+        response = self.client.post(
+            "/api/listings/images/",
+            data={
+                "listing": self.listing.id,
+                "image": self.create_uploaded_image(),
+            },
+            format="multipart",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(self.listing.images.count(), 0)
+
     def test_other_user_cannot_add_image_to_listing(self):
         self.client.force_authenticate(user=self.other_user)
 

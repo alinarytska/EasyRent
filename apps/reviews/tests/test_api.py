@@ -104,6 +104,22 @@ class ReviewPermissionAPITests(APITestCase):
         self.assertEqual(response.data["booking"], self.completed_booking.id)
         self.assertEqual(response.data["rating"], 5)
 
+    def test_anonymous_user_cannot_create_review(self):
+        response = self.client.post(
+            "/api/reviews/",
+            data={
+                "booking": self.completed_booking.id,
+                "rating": 5,
+                "comment": "Excellent apartment.",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertFalse(
+            Review.objects.filter(booking=self.completed_booking).exists()
+        )
+
     def test_user_cannot_create_review_for_another_users_booking(self):
         self.client.force_authenticate(user=self.renter)
 
@@ -136,6 +152,24 @@ class ReviewPermissionAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("booking", response.data)
 
+    def test_unrelated_user_cannot_retrieve_review(self):
+        review = self.create_review()
+        self.client.force_authenticate(user=self.other_renter)
+
+        response = self.client.get(f"/api/reviews/{review.id}/")
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_unrelated_user_does_not_see_review_in_list(self):
+        review = self.create_review()
+        self.client.force_authenticate(user=self.other_renter)
+
+        response = self.client.get("/api/reviews/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        review_ids = [item["id"] for item in response.data["results"]]
+        self.assertNotIn(review.id, review_ids)
+
     def test_author_can_update_own_review(self):
         review = self.create_review()
         self.client.force_authenticate(user=self.renter)
@@ -166,6 +200,22 @@ class ReviewPermissionAPITests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        review.refresh_from_db()
+
+        self.assertEqual(review.rating, 5)
+
+    def test_other_renter_cannot_update_review(self):
+        review = self.create_review()
+        self.client.force_authenticate(user=self.other_renter)
+
+        response = self.client.patch(
+            f"/api/reviews/{review.id}/",
+            data={"rating": 1},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
         review.refresh_from_db()
 
@@ -210,4 +260,13 @@ class ReviewPermissionAPITests(APITestCase):
         response = self.client.delete(f"/api/reviews/{review.id}/")
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(Review.objects.filter(pk=review.pk).exists())
+
+    def test_other_renter_cannot_delete_review(self):
+        review = self.create_review()
+        self.client.force_authenticate(user=self.other_renter)
+
+        response = self.client.delete(f"/api/reviews/{review.id}/")
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertTrue(Review.objects.filter(pk=review.pk).exists())
