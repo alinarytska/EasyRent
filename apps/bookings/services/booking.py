@@ -93,6 +93,11 @@ def create_booking(serializer, renter):
 
 @transaction.atomic
 def update_booking(serializer):
+    if serializer.instance.status != Booking.Status.PENDING:
+        raise APIValidationError(
+            {"status": "Only pending bookings can be updated."}
+        )
+
     listing = serializer.validated_data.get(
         "listing",
         serializer.instance.listing,

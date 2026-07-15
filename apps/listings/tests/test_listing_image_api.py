@@ -146,6 +146,59 @@ class ListingImagePermissionAPITests(APITestCase):
 
         self.assertEqual(listing_image.position, 5)
 
+    def test_owner_cannot_add_second_primary_image_to_listing(self):
+        ListingImage.objects.create(
+            listing=self.listing,
+            image="primary-image.jpg",
+            is_primary=True,
+        )
+        self.client.force_authenticate(user=self.owner)
+
+        response = self.client.post(
+            "/api/listings/images/",
+            data={
+                "listing": self.listing.id,
+                "image": self.create_uploaded_image(),
+                "is_primary": True,
+            },
+            format="multipart",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("is_primary", response.data)
+        self.assertEqual(
+            ListingImage.objects.filter(
+                listing=self.listing,
+                is_primary=True,
+            ).count(),
+            1,
+        )
+
+    def test_owner_cannot_mark_second_image_as_primary(self):
+        ListingImage.objects.create(
+            listing=self.listing,
+            image="primary-image.jpg",
+            is_primary=True,
+        )
+        listing_image = ListingImage.objects.create(
+            listing=self.listing,
+            image="regular-image.jpg",
+        )
+        self.client.force_authenticate(user=self.owner)
+
+        response = self.client.patch(
+            f"/api/listings/images/{listing_image.id}/",
+            data={"is_primary": True},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("is_primary", response.data)
+
+        listing_image.refresh_from_db()
+
+        self.assertFalse(listing_image.is_primary)
+
     def test_other_user_cannot_update_listing_image(self):
         listing_image = ListingImage.objects.create(
             listing=self.listing,

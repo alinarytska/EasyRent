@@ -1,7 +1,5 @@
-from datetime import timedelta
 from decimal import Decimal
 
-from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -51,7 +49,7 @@ class ViewHistoryAPITests(APITestCase):
         data.update(overrides)
         return Listing.objects.create(**data)
 
-    def test_user_can_create_view_history_entry(self):
+    def test_user_cannot_create_view_history_entry_manually(self):
         self.client.force_authenticate(user=self.viewer)
 
         response = self.client.post(
@@ -60,41 +58,30 @@ class ViewHistoryAPITests(APITestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data["user"], self.viewer.id)
-        self.assertEqual(response.data["listing"], self.listing.id)
-        self.assertTrue(
-            ViewHistory.objects.filter(
-                user=self.viewer,
-                listing=self.listing,
-            ).exists()
-        )
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertFalse(ViewHistory.objects.exists())
 
-    def test_repeated_view_updates_existing_entry(self):
+    def test_user_cannot_update_view_history_entry_manually(self):
         entry = ViewHistory.objects.create(
             user=self.viewer,
             listing=self.listing,
         )
-        previous_viewed_at = timezone.now() - timedelta(days=1)
-        ViewHistory.objects.filter(pk=entry.pk).update(
-            viewed_at=previous_viewed_at,
-        )
         self.client.force_authenticate(user=self.viewer)
 
-        response = self.client.post(
-            "/api/view-history/",
-            data={"listing": self.listing.id},
+        response = self.client.patch(
+            f"/api/view-history/{entry.id}/",
+            data={"listing": self.other_listing.id},
             format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
         self.assertEqual(ViewHistory.objects.count(), 1)
 
         entry.refresh_from_db()
 
-        self.assertGreater(entry.viewed_at, previous_viewed_at)
+        self.assertEqual(entry.listing, self.listing)
 
-    def test_user_cannot_create_view_history_for_another_user(self):
+    def test_user_cannot_create_view_history_for_another_user_manually(self):
         self.client.force_authenticate(user=self.viewer)
 
         response = self.client.post(
@@ -106,8 +93,7 @@ class ViewHistoryAPITests(APITestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data["user"], self.viewer.id)
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
         self.assertFalse(
             ViewHistory.objects.filter(
                 user=self.other_viewer,

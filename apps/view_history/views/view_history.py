@@ -1,6 +1,6 @@
 from drf_spectacular.utils import extend_schema
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import status, viewsets
+from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter
 from rest_framework.response import Response
@@ -9,10 +9,10 @@ from apps.listings.serializers import ListingSerializer
 from apps.view_history.filters import ViewHistoryFilter
 from apps.view_history.models import ViewHistory
 from apps.view_history.serializers import ViewHistorySerializer
-from apps.view_history.services import get_popular_listings, record_listing_view
+from apps.view_history.services import get_popular_listings
 
 
-class ViewHistoryViewSet(viewsets.ModelViewSet):
+class ViewHistoryViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ViewHistorySerializer
     throttle_scope = "history"
     filter_backends = (DjangoFilterBackend, OrderingFilter)
@@ -52,16 +52,3 @@ class ViewHistoryViewSet(viewsets.ModelViewSet):
 
         serializer = ListingSerializer(queryset, many=True)
         return Response(serializer.data)
-
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        view_history, created = record_listing_view(
-            user=request.user,
-            listing=serializer.validated_data["listing"],
-            return_created=True,
-        )
-        response_serializer = self.get_serializer(view_history)
-        response_status = status.HTTP_201_CREATED if created else status.HTTP_200_OK
-
-        return Response(response_serializer.data, status=response_status)

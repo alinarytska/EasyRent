@@ -259,6 +259,24 @@ class BookingPermissionAPITests(APITestCase):
 
         self.assertEqual(booking.listing, self.listing)
 
+    def test_listing_owner_cannot_update_confirmed_booking_directly(self):
+        booking = self.create_booking(status=Booking.Status.CONFIRMED)
+        self.client.force_authenticate(user=self.landlord)
+
+        response = self.client.patch(
+            f"/api/bookings/{booking.id}/",
+            data={"end_date": "2026-08-05"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("status", response.data)
+
+        booking.refresh_from_db()
+
+        self.assertEqual(booking.end_date, date(2026, 8, 4))
+        self.assertEqual(booking.total_price, Decimal("360.00"))
+
     def test_renter_cannot_update_booking_directly(self):
         booking = self.create_booking()
         self.client.force_authenticate(user=self.renter)

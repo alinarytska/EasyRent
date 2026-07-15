@@ -33,12 +33,40 @@ class ListingImageSerializer(serializers.ModelSerializer):
         )
 
     def validate(self, attrs):
+        listing = attrs.get(
+            "listing",
+            self.instance.listing if self.instance else None,
+        )
+        is_primary = attrs.get(
+            "is_primary",
+            self.instance.is_primary if self.instance else False,
+        )
+
         if self.instance and "listing" in attrs:
-            if attrs["listing"] != self.instance.listing:
+            if listing != self.instance.listing:
                 raise serializers.ValidationError(
                     {
                         "listing": (
                             "Listing cannot be changed after image creation."
+                        )
+                    }
+                )
+
+        if is_primary and listing:
+            existing_primary_image = ListingImage.objects.filter(
+                primary_listing=listing,
+            )
+
+            if self.instance:
+                existing_primary_image = existing_primary_image.exclude(
+                    pk=self.instance.pk,
+                )
+
+            if existing_primary_image.exists():
+                raise serializers.ValidationError(
+                    {
+                        "is_primary": (
+                            "This listing already has a primary image."
                         )
                     }
                 )
