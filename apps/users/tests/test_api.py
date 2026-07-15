@@ -107,6 +107,85 @@ class JWTAuthenticationAPITests(APITestCase):
         self.assertNotIn("access", response.data)
         self.assertNotIn("refresh", response.data)
 
+    def test_user_can_logout_with_refresh_token(self):
+        token_response = self.client.post(
+            "/api/auth/token/",
+            data={
+                "email": "auth@example.com",
+                "password": "StrongPassword123!",
+            },
+            format="json",
+        )
+        access_token = token_response.data["access"]
+        refresh_token = token_response.data["refresh"]
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {access_token}")
+
+        response = self.client.post(
+            "/api/auth/logout/",
+            data={"refresh": refresh_token},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_logged_out_refresh_token_cannot_be_used_again(self):
+        token_response = self.client.post(
+            "/api/auth/token/",
+            data={
+                "email": "auth@example.com",
+                "password": "StrongPassword123!",
+            },
+            format="json",
+        )
+        access_token = token_response.data["access"]
+        refresh_token = token_response.data["refresh"]
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {access_token}")
+
+        self.client.post(
+            "/api/auth/logout/",
+            data={"refresh": refresh_token},
+            format="json",
+        )
+        self.client.credentials()
+
+        response = self.client.post(
+            "/api/auth/token/refresh/",
+            data={"refresh": refresh_token},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_anonymous_user_cannot_logout(self):
+        response = self.client.post(
+            "/api/auth/logout/",
+            data={"refresh": "token"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_logout_requires_refresh_token(self):
+        token_response = self.client.post(
+            "/api/auth/token/",
+            data={
+                "email": "auth@example.com",
+                "password": "StrongPassword123!",
+            },
+            format="json",
+        )
+        access_token = token_response.data["access"]
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {access_token}")
+
+        response = self.client.post(
+            "/api/auth/logout/",
+            data={},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("refresh", response.data)
+
 
 class CurrentUserAPITests(APITestCase):
     def setUp(self):
