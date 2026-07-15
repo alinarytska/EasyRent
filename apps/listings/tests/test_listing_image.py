@@ -3,6 +3,7 @@ from pathlib import Path
 
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import IntegrityError, transaction
 from django.test import TestCase
 
 from apps.listings.models import Listing, ListingImage
@@ -101,6 +102,21 @@ class ListingImageModelTests(TestCase):
             list(self.listing.images.all()),
             [primary_image, second_image, last_image],
         )
+
+    def test_listing_can_have_only_one_primary_image(self):
+        ListingImage.objects.create(
+            listing=self.listing,
+            image="primary.jpg",
+            is_primary=True,
+        )
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                ListingImage.objects.create(
+                    listing=self.listing,
+                    image="another-primary.jpg",
+                    is_primary=True,
+                )
 
     def test_upload_path_contains_listing_id_and_unique_file_name(self):
         listing_image = ListingImage(listing=self.listing)
