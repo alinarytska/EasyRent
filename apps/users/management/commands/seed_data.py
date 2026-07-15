@@ -345,31 +345,39 @@ class Command(BaseCommand):
         while len(bookings) < count and attempts < max_attempts:
             attempts += 1
             listing = choice(listings)
-            start_date = timezone.localdate() + timedelta(days=randint(1, 90))
-            nights = randint(1, 14)
-            end_date = start_date + timedelta(days=nights)
+            available_renters = [
+                renter
+                for renter in renters
+                if renter.pk != listing.owner_id
+            ]
+
+            if not available_renters:
+                continue
+
+            status = self.generate_booking_status(
+                completed_bookings_count=len(
+                    [
+                        booking
+                        for booking in bookings
+                        if booking.status == Booking.Status.COMPLETED
+                    ]
+                ),
+                min_completed_count=min_completed_count,
+            )
+            start_date, end_date = self.generate_booking_dates(status)
             price_per_night = listing.price_per_night
-            total_price = price_per_night * nights
+            total_price = price_per_night * (end_date - start_date).days
 
             try:
                 with transaction.atomic():
                     booking = Booking(
                         listing=listing,
-                        renter=choice(renters),
+                        renter=choice(available_renters),
                         start_date=start_date,
                         end_date=end_date,
                         price_per_night=price_per_night,
                         total_price=total_price,
-                        status=self.generate_booking_status(
-                            completed_bookings_count=len(
-                                [
-                                    booking
-                                    for booking in bookings
-                                    if booking.status == Booking.Status.COMPLETED
-                                ]
-                            ),
-                            min_completed_count=min_completed_count,
-                        ),
+                        status=status,
                     )
                     booking.full_clean()
                     booking.save()
@@ -502,6 +510,18 @@ class Command(BaseCommand):
         )
 
         return choice(statuses)
+
+    def generate_booking_dates(self, status):
+        nights = randint(1, 14)
+
+        if status == Booking.Status.COMPLETED:
+            end_date = timezone.localdate() - timedelta(days=randint(1, 90))
+            start_date = end_date - timedelta(days=nights)
+        else:
+            start_date = timezone.localdate() + timedelta(days=randint(1, 90))
+            end_date = start_date + timedelta(days=nights)
+
+        return start_date, end_date
 
     def generate_image_file(self):
         image = Image.new(
