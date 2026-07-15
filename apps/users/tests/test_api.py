@@ -51,6 +51,63 @@ class UserRegistrationAPITests(APITestCase):
         )
 
 
+class JWTAuthenticationAPITests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email="auth@example.com",
+            password="StrongPassword123!",
+            first_name="Anna",
+            last_name="Smith",
+        )
+
+    def test_user_can_obtain_jwt_tokens_with_email_and_password(self):
+        response = self.client.post(
+            "/api/auth/token/",
+            data={
+                "email": "auth@example.com",
+                "password": "StrongPassword123!",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("access", response.data)
+        self.assertIn("refresh", response.data)
+
+    def test_user_can_refresh_access_token(self):
+        token_response = self.client.post(
+            "/api/auth/token/",
+            data={
+                "email": "auth@example.com",
+                "password": "StrongPassword123!",
+            },
+            format="json",
+        )
+
+        response = self.client.post(
+            "/api/auth/token/refresh/",
+            data={"refresh": token_response.data["refresh"]},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("access", response.data)
+
+    def test_user_cannot_obtain_tokens_with_invalid_password(self):
+        response = self.client.post(
+            "/api/auth/token/",
+            data={
+                "email": "auth@example.com",
+                "password": "WrongPassword123!",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertNotIn("access", response.data)
+        self.assertNotIn("refresh", response.data)
+
+
 class CurrentUserAPITests(APITestCase):
     def setUp(self):
         self.user = User.objects.create_user(
