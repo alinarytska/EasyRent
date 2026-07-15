@@ -1,3 +1,6 @@
+from django.db.models import Count
+
+
 IGNORED_SEARCH_HISTORY_PARAMS = {
     "format",
     "ordering",
@@ -43,4 +46,14 @@ def record_listing_search(user, query_params):
         user=user,
         query=query,
         search_filters=build_search_filters(query_params),
+    )
+
+
+def get_popular_search_queries():
+    from apps.search_history.models import SearchHistory
+
+    return (
+        SearchHistory.objects.values("query")
+        .annotate(search_count=Count("id"))
+        .order_by("-search_count", "query")
     )

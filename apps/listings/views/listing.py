@@ -13,7 +13,7 @@ from apps.listings.serializers import ListingSerializer
 from apps.reviews.models import Review
 from apps.reviews.serializers import ReviewSerializer
 from apps.search_history.services import record_listing_search
-from apps.view_history.services import record_listing_view
+from apps.view_history.services import get_popular_listings, record_listing_view
 
 
 class ListingViewSet(viewsets.ModelViewSet):
@@ -105,7 +105,7 @@ class ListingViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=("get",), url_path="popular")
     def popular(self, request):
-        queryset = self.get_queryset().order_by("-views_count", "-created_at")
+        queryset = get_popular_listings()
         page = self.paginate_queryset(queryset)
 
         if page is not None:

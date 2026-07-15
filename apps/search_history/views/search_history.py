@@ -1,4 +1,3 @@
-from django.db.models import Count
 from drf_spectacular.utils import extend_schema
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
@@ -12,6 +11,7 @@ from apps.search_history.serializers import (
     PopularSearchQuerySerializer,
     SearchHistorySerializer,
 )
+from apps.search_history.services import get_popular_search_queries
 
 
 class SearchHistoryViewSet(viewsets.ModelViewSet):
@@ -34,11 +34,7 @@ class SearchHistoryViewSet(viewsets.ModelViewSet):
     @extend_schema(responses=PopularSearchQuerySerializer(many=True))
     @action(detail=False, methods=("get",), url_path="popular")
     def popular_queries(self, request):
-        queryset = (
-            SearchHistory.objects.values("query")
-            .annotate(search_count=Count("id"))
-            .order_by("-search_count", "query")
-        )
+        queryset = get_popular_search_queries()
         page = self.paginate_queryset(queryset)
 
         if page is not None:
