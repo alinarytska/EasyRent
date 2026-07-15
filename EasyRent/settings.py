@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'django_filters',
     'drf_spectacular',
     'apps.users.apps.UsersConfig',
     'apps.listings.apps.ListingsConfig',
@@ -77,6 +78,7 @@ if env.bool("USE_REMOTE"):
             'PORT': env.int("MYSQL_PORT"),
             'OPTIONS': {
                 'charset': 'utf8mb4',
+                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
             },
         }
     }
@@ -135,6 +137,9 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
+    ),
+    'DEFAULT_FILTER_BACKENDS': (
+        'django_filters.rest_framework.DjangoFilterBackend',
     ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,

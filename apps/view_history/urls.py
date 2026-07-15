@@ -1,3 +1,11 @@
-app_name = 'view_history'
+from rest_framework.routers import DefaultRouter
 
-urlpatterns = []
+from apps.view_history.views import ViewHistoryViewSet
+
+
+app_name = "view_history"
+
+router = DefaultRouter()
+router.register("", ViewHistoryViewSet, basename="view-history")
+
+urlpatterns = router.urls

@@ -103,7 +103,9 @@ class UserManagerTests(TestCase):
         self.assertFalse(user.can_create_listing)
 
     def test_renters_group_allows_user_to_rent(self):
-        renters_group = Group.objects.create(name=User.RENTERS_GROUP)
+        renters_group, _ = Group.objects.get_or_create(
+            name=User.RENTERS_GROUP,
+        )
         user = User.objects.create_user(
             email="renter@example.com",
             password="strong-test-password",
@@ -116,7 +118,9 @@ class UserManagerTests(TestCase):
         self.assertFalse(user.can_create_listing)
 
     def test_landlords_group_allows_user_to_create_listing(self):
-        landlords_group = Group.objects.create(name=User.LANDLORDS_GROUP)
+        landlords_group, _ = Group.objects.get_or_create(
+            name=User.LANDLORDS_GROUP,
+        )
         user = User.objects.create_user(
             email="landlord@example.com",
             password="strong-test-password",
@@ -129,8 +133,12 @@ class UserManagerTests(TestCase):
         self.assertTrue(user.can_create_listing)
 
     def test_user_can_belong_to_both_rental_groups(self):
-        renters_group = Group.objects.create(name=User.RENTERS_GROUP)
-        landlords_group = Group.objects.create(name=User.LANDLORDS_GROUP)
+        renters_group, _ = Group.objects.get_or_create(
+            name=User.RENTERS_GROUP,
+        )
+        landlords_group, _ = Group.objects.get_or_create(
+            name=User.LANDLORDS_GROUP,
+        )
         user = User.objects.create_user(
             email="both@example.com",
             password="strong-test-password",
