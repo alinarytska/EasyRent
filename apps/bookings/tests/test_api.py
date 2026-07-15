@@ -46,6 +46,13 @@ class BookingPermissionAPITests(APITestCase):
             first_name="Maria",
             last_name="Brown",
         )
+        self.staff_user = User.objects.create_user(
+            email="staff@example.com",
+            password="strong-test-password",
+            first_name="Staff",
+            last_name="User",
+            is_staff=True,
+        )
         self.listing = self.create_listing(owner=self.landlord)
 
     def create_listing(self, owner, **overrides):
@@ -203,6 +210,14 @@ class BookingPermissionAPITests(APITestCase):
         booking_ids = [item["id"] for item in response.data["results"]]
         self.assertNotIn(booking.id, booking_ids)
 
+    def test_staff_user_does_not_get_special_booking_access_in_api(self):
+        booking = self.create_booking()
+        self.client.force_authenticate(user=self.staff_user)
+
+        response = self.client.get(f"/api/bookings/{booking.id}/")
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
     def test_listing_owner_can_update_booking(self):
         booking = self.create_booking()
         self.client.force_authenticate(user=self.landlord)
@@ -220,6 +235,29 @@ class BookingPermissionAPITests(APITestCase):
 
         self.assertEqual(booking.end_date, date(2026, 8, 5))
         self.assertEqual(booking.total_price, Decimal("480.00"))
+
+    def test_listing_owner_cannot_change_booking_listing(self):
+        booking = self.create_booking()
+        another_listing = self.create_listing(
+            owner=self.landlord,
+            title="Another apartment",
+            street="Torstrasse",
+            house_number="2",
+        )
+        self.client.force_authenticate(user=self.landlord)
+
+        response = self.client.patch(
+            f"/api/bookings/{booking.id}/",
+            data={"listing": another_listing.id},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("listing", response.data)
+
+        booking.refresh_from_db()
+
+        self.assertEqual(booking.listing, self.listing)
 
     def test_renter_cannot_update_booking_directly(self):
         booking = self.create_booking()

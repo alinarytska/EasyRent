@@ -30,6 +30,13 @@ class ReviewPermissionAPITests(APITestCase):
             first_name="Maria",
             last_name="Brown",
         )
+        self.staff_user = User.objects.create_user(
+            email="staff@example.com",
+            password="strong-test-password",
+            first_name="Staff",
+            last_name="User",
+            is_staff=True,
+        )
         self.listing = self.create_listing(owner=self.landlord)
         self.completed_booking = self.create_booking(
             renter=self.renter,
@@ -169,6 +176,14 @@ class ReviewPermissionAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         review_ids = [item["id"] for item in response.data["results"]]
         self.assertNotIn(review.id, review_ids)
+
+    def test_staff_user_does_not_get_special_review_access_in_api(self):
+        review = self.create_review()
+        self.client.force_authenticate(user=self.staff_user)
+
+        response = self.client.get(f"/api/reviews/{review.id}/")
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_author_can_update_own_review(self):
         review = self.create_review()

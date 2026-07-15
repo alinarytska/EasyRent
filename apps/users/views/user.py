@@ -25,9 +25,6 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         if not user.is_authenticated:
             return queryset.none()
 
-        if user.is_staff:
-            return queryset
-
         return queryset.filter(pk=user.pk)
 
     @extend_schema(methods=("GET",), responses=UserSerializer)

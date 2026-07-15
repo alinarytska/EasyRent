@@ -14,7 +14,7 @@ from apps.search_history.serializers import (
 from apps.search_history.services import get_popular_search_queries
 
 
-class SearchHistoryViewSet(viewsets.ModelViewSet):
+class SearchHistoryViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = SearchHistorySerializer
     throttle_scope = "history"
     filter_backends = (DjangoFilterBackend, OrderingFilter)
@@ -49,6 +49,3 @@ class SearchHistoryViewSet(viewsets.ModelViewSet):
 
         serializer = PopularSearchQuerySerializer(queryset, many=True)
         return Response(serializer.data)
-
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)

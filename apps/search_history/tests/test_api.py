@@ -20,7 +20,7 @@ class SearchHistoryAPITests(APITestCase):
             last_name="Green",
         )
 
-    def test_user_can_create_search_history_entry(self):
+    def test_user_cannot_create_search_history_entry_manually(self):
         self.client.force_authenticate(user=self.user)
 
         response = self.client.post(
@@ -36,18 +36,10 @@ class SearchHistoryAPITests(APITestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data["user"], self.user.id)
-        self.assertEqual(response.data["query"], "Berlin apartment")
-        self.assertEqual(response.data["search_filters"]["city"], "Berlin")
-        self.assertTrue(
-            SearchHistory.objects.filter(
-                user=self.user,
-                query="Berlin apartment",
-            ).exists()
-        )
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertFalse(SearchHistory.objects.exists())
 
-    def test_user_cannot_create_search_history_for_another_user(self):
+    def test_user_cannot_create_search_history_for_another_user_manually(self):
         self.client.force_authenticate(user=self.user)
 
         response = self.client.post(
@@ -59,8 +51,7 @@ class SearchHistoryAPITests(APITestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data["user"], self.user.id)
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
         self.assertFalse(
             SearchHistory.objects.filter(
                 user=self.other_user,
@@ -68,7 +59,12 @@ class SearchHistoryAPITests(APITestCase):
             ).exists()
         )
 
-    def test_anonymous_user_cannot_create_search_history_entry(self):
+    def test_anonymous_user_cannot_list_search_history_entries(self):
+        response = self.client.get("/api/search-history/")
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_anonymous_user_cannot_create_search_history_entry_manually(self):
         response = self.client.post(
             "/api/search-history/",
             data={"query": "Berlin apartment"},

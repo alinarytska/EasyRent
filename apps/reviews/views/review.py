@@ -35,9 +35,6 @@ class ReviewViewSet(viewsets.ModelViewSet):
         if not user.is_authenticated:
             return queryset.none()
 
-        if user.is_staff:
-            return queryset
-
         return queryset.filter(
             Q(booking__renter=user) | Q(booking__listing__owner=user),
         ).distinct()

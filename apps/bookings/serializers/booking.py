@@ -71,6 +71,16 @@ class BookingSerializer(serializers.ModelSerializer):
             self.instance.end_date if self.instance else None,
         )
 
+        if self.instance and "listing" in attrs:
+            if listing != self.instance.listing:
+                raise serializers.ValidationError(
+                    {
+                        "listing": (
+                            "Listing cannot be changed after booking creation."
+                        )
+                    }
+                )
+
         if start_date and end_date:
             calculate_booking_prices(
                 listing=listing,
