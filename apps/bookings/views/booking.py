@@ -7,6 +7,7 @@ from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter
 from rest_framework.response import Response
 
+from apps.common.mixins import ProtectedDestroyMixin
 from apps.bookings.filters import BookingFilter
 from apps.bookings.models import Booking
 from apps.bookings.permissions import BookingPermission
@@ -20,9 +21,12 @@ from apps.bookings.services import (
 )
 
 
-class BookingViewSet(viewsets.ModelViewSet):
+class BookingViewSet(ProtectedDestroyMixin, viewsets.ModelViewSet):
     serializer_class = BookingSerializer
     permission_classes = (BookingPermission,)
+    protected_destroy_error_message = (
+        "Booking with a review cannot be deleted."
+    )
     filter_backends = (DjangoFilterBackend, OrderingFilter)
     filterset_class = BookingFilter
     ordering_fields = (

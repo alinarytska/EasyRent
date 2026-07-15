@@ -8,6 +8,7 @@ from rest_framework.test import APITestCase
 
 from apps.bookings.models import Booking
 from apps.listings.models import Listing
+from apps.reviews.models import Review
 from apps.users.models import User
 
 
@@ -302,6 +303,22 @@ class BookingPermissionAPITests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Booking.objects.filter(pk=booking.pk).exists())
+
+    def test_listing_owner_cannot_delete_booking_with_review(self):
+        booking = self.create_booking(status=Booking.Status.COMPLETED)
+        review = Review.objects.create(
+            booking=booking,
+            rating=5,
+            comment="Excellent apartment.",
+        )
+        self.client.force_authenticate(user=self.landlord)
+
+        response = self.client.delete(f"/api/bookings/{booking.id}/")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("detail", response.data)
+        self.assertTrue(Booking.objects.filter(pk=booking.pk).exists())
+        self.assertTrue(Review.objects.filter(pk=review.pk).exists())
 
     def test_renter_cannot_delete_booking_directly(self):
         booking = self.create_booking()

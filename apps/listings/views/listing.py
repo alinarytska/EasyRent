@@ -6,6 +6,7 @@ from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.response import Response
 from rest_framework import viewsets
 
+from apps.common.mixins import ProtectedDestroyMixin
 from apps.listings.filters import ListingFilter
 from apps.listings.models import Listing
 from apps.listings.permissions import ListingPermission
@@ -16,9 +17,12 @@ from apps.search_history.services import record_listing_search
 from apps.view_history.services import get_popular_listings, record_listing_view
 
 
-class ListingViewSet(viewsets.ModelViewSet):
+class ListingViewSet(ProtectedDestroyMixin, viewsets.ModelViewSet):
     serializer_class = ListingSerializer
     permission_classes = (ListingPermission,)
+    protected_destroy_error_message = (
+        "Listing with bookings cannot be deleted. Deactivate it instead."
+    )
     throttle_scope = "listings"
     filter_backends = (DjangoFilterBackend, SearchFilter, OrderingFilter)
     filterset_class = ListingFilter

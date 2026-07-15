@@ -357,6 +357,21 @@ class ListingPermissionAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Listing.objects.filter(pk=listing.pk).exists())
 
+    def test_owner_cannot_delete_listing_with_bookings(self):
+        listing = self.create_listing(owner=self.landlord)
+        booking = self.create_booking(
+            listing=listing,
+            status=Booking.Status.COMPLETED,
+        )
+        self.client.force_authenticate(user=self.landlord)
+
+        response = self.client.delete(f"/api/listings/{listing.id}/")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("detail", response.data)
+        self.assertTrue(Listing.objects.filter(pk=listing.pk).exists())
+        self.assertTrue(Booking.objects.filter(pk=booking.pk).exists())
+
     def test_other_user_cannot_delete_listing(self):
         listing = self.create_listing(owner=self.landlord)
         self.client.force_authenticate(user=self.other_landlord)
