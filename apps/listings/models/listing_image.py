@@ -1,7 +1,7 @@
 from pathlib import Path
 from uuid import uuid4
 
-from django.db import models
+from django.db import models, transaction
 from django.utils.translation import gettext_lazy as _
 
 from apps.listings.validators import validate_listing_image_size
@@ -63,10 +63,54 @@ class ListingImage(models.Model):
     def sync_primary_listing(self):
         self.primary_listing_id = self.listing_id if self.is_primary else None
 
+    def get_stored_image_name(self):
+        if not self.pk:
+            return None
+
+        return (
+            type(self)
+            .objects.filter(pk=self.pk)
+            .values_list("image", flat=True)
+            .first()
+        )
+
+    def is_image_used_by_other_records(self, image_name):
+        if not image_name:
+            return False
+
+        queryset = type(self).objects.filter(image=image_name)
+
+        if self.pk:
+            queryset = queryset.exclude(pk=self.pk)
+
+        return queryset.exists()
+
+    def delete_file_from_storage(self, image_name=None):
+        image_name = image_name or self.image.name
+
+        if not image_name:
+            return
+
+        storage = self.image.storage
+
+        def delete_file():
+            if self.is_image_used_by_other_records(image_name):
+                return
+
+            if storage.exists(image_name):
+                storage.delete(image_name)
+
+        transaction.on_commit(delete_file)
+
     def clean(self):
         self.sync_primary_listing()
         super().clean()
 
     def save(self, *args, **kwargs):
+        old_image_name = self.get_stored_image_name()
+
         self.sync_primary_listing()
         super().save(*args, **kwargs)
+
+        if old_image_name and old_image_name != self.image.name:
+            self.delete_file_from_storage(old_image_name)
