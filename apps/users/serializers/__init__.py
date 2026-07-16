@@ -3,6 +3,7 @@ from apps.users.serializers.user import (
     UserGroupAddSerializer,
     UserPasswordChangeSerializer,
     UserProfileUpdateSerializer,
+    UserReactivationSerializer,
     UserRegistrationSerializer,
     UserSerializer,
 )
@@ -13,6 +14,7 @@ __all__ = [
     "UserGroupAddSerializer",
     "UserPasswordChangeSerializer",
     "UserProfileUpdateSerializer",
+    "UserReactivationSerializer",
     "UserRegistrationSerializer",
     "UserSerializer",
 ]

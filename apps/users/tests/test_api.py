@@ -1,5 +1,8 @@
+from datetime import timedelta
+
 from django.contrib.auth.models import Group
 from django.core.cache import cache
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -277,8 +280,14 @@ class CurrentUserAPITests(APITestCase):
         self.user.refresh_from_db()
 
         self.assertFalse(self.user.is_active)
-        self.assertFalse(self.user.has_usable_password())
-        self.assertFalse(self.user.groups.exists())
+        self.assertIsNotNone(self.user.deactivated_at)
+        self.assertTrue(self.user.check_password("strong-test-password"))
+        self.assertTrue(
+            self.user.groups.filter(name=User.RENTERS_GROUP).exists(),
+        )
+        self.assertTrue(
+            self.user.groups.filter(name=User.LANDLORDS_GROUP).exists(),
+        )
 
     def test_anonymous_user_cannot_deactivate_account(self):
         response = self.client.delete("/api/v1/users/me/")
@@ -334,6 +343,98 @@ class CurrentUserAPITests(APITestCase):
             refresh_response.status_code,
             status.HTTP_401_UNAUTHORIZED,
         )
+
+    def test_user_can_reactivate_account_within_recovery_period(self):
+        renters_group = Group.objects.get(name=User.RENTERS_GROUP)
+        self.user.groups.add(renters_group)
+        self.client.force_authenticate(user=self.user)
+        self.client.delete("/api/v1/users/me/")
+        self.client.force_authenticate(user=None)
+
+        response = self.client.post(
+            "/api/v1/users/reactivate/",
+            data={
+                "email": "profile@example.com",
+                "password": "strong-test-password",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["email"], "profile@example.com")
+        self.assertEqual(response.data["rental_groups"], [User.RENTERS_GROUP])
+        self.assertTrue(response.data["can_rent"])
+
+        self.user.refresh_from_db()
+
+        self.assertTrue(self.user.is_active)
+        self.assertIsNone(self.user.deactivated_at)
+        self.assertTrue(
+            self.user.groups.filter(name=User.RENTERS_GROUP).exists(),
+        )
+
+        login_response = self.obtain_tokens()
+
+        self.assertEqual(login_response.status_code, status.HTTP_200_OK)
+        self.assertIn("access", login_response.data)
+        self.assertIn("refresh", login_response.data)
+
+    def test_user_cannot_reactivate_account_with_wrong_password(self):
+        self.client.force_authenticate(user=self.user)
+        self.client.delete("/api/v1/users/me/")
+        self.client.force_authenticate(user=None)
+
+        response = self.client.post(
+            "/api/v1/users/reactivate/",
+            data={
+                "email": "profile@example.com",
+                "password": "wrong-password",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("non_field_errors", response.data)
+
+        self.user.refresh_from_db()
+
+        self.assertFalse(self.user.is_active)
+        self.assertIsNotNone(self.user.deactivated_at)
+
+    def test_user_cannot_reactivate_account_after_recovery_period(self):
+        self.user.is_active = False
+        self.user.deactivated_at = timezone.now() - timedelta(days=31)
+        self.user.save(update_fields=("is_active", "deactivated_at"))
+
+        response = self.client.post(
+            "/api/v1/users/reactivate/",
+            data={
+                "email": "profile@example.com",
+                "password": "strong-test-password",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("non_field_errors", response.data)
+
+        self.user.refresh_from_db()
+
+        self.assertFalse(self.user.is_active)
+        self.assertIsNotNone(self.user.deactivated_at)
+
+    def test_active_user_cannot_reactivate_account(self):
+        response = self.client.post(
+            "/api/v1/users/reactivate/",
+            data={
+                "email": "profile@example.com",
+                "password": "strong-test-password",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("non_field_errors", response.data)
 
     def test_user_can_change_current_password(self):
         self.client.force_authenticate(user=self.user)

@@ -1,10 +1,12 @@
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.users.models import User
+from apps.users.services import ACCOUNT_RECOVERY_PERIOD
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -144,6 +146,54 @@ class UserPasswordChangeSerializer(serializers.Serializer):
                 {"new_password": list(error.messages)}
             ) from error
 
+        return attrs
+
+
+class UserReactivationSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(
+        write_only=True,
+        style={"input_type": "password"},
+    )
+
+    def validate(self, attrs):
+        normalized_email = User.objects.normalize_email(attrs["email"]).lower()
+        password = attrs["password"]
+
+        try:
+            user = User.objects.get(email=normalized_email)
+        except User.DoesNotExist as error:
+            raise serializers.ValidationError(
+                {"non_field_errors": "Invalid credentials."}
+            ) from error
+
+        if user.is_active:
+            raise serializers.ValidationError(
+                {"non_field_errors": "Account is already active."}
+            )
+
+        if not user.check_password(password):
+            raise serializers.ValidationError(
+                {"non_field_errors": "Invalid credentials."}
+            )
+
+        if not user.deactivated_at:
+            raise serializers.ValidationError(
+                {"non_field_errors": "Account cannot be reactivated."}
+            )
+
+        now = self.context.get("now", timezone.now())
+
+        if now > user.deactivated_at + ACCOUNT_RECOVERY_PERIOD:
+            raise serializers.ValidationError(
+                {
+                    "non_field_errors": (
+                        "Account recovery period has expired."
+                    )
+                }
+            )
+
+        attrs["user"] = user
         return attrs
 
 

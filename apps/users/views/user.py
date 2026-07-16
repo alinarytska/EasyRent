@@ -1,3 +1,4 @@
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -9,10 +10,15 @@ from apps.users.serializers import (
     UserGroupAddSerializer,
     UserPasswordChangeSerializer,
     UserProfileUpdateSerializer,
+    UserReactivationSerializer,
     UserRegistrationSerializer,
     UserSerializer,
 )
-from apps.users.services import change_user_password, deactivate_user_account
+from apps.users.services import (
+    change_user_password,
+    deactivate_user_account,
+    reactivate_user_account,
+)
 
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
@@ -89,6 +95,27 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
             new_password=serializer.validated_data["new_password"],
         )
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @extend_schema(
+        request=UserReactivationSerializer,
+        responses=UserSerializer,
+    )
+    @action(
+        detail=False,
+        methods=("post",),
+        url_path="reactivate",
+        permission_classes=(AllowAny,),
+        throttle_scope="auth",
+    )
+    def reactivate(self, request):
+        serializer = UserReactivationSerializer(
+            data=request.data,
+            context={"now": timezone.now()},
+        )
+        serializer.is_valid(raise_exception=True)
+        user = reactivate_user_account(serializer.validated_data["user"])
+        response_serializer = self.get_serializer(user)
+        return Response(response_serializer.data)
 
     @extend_schema(
         request=UserRegistrationSerializer,

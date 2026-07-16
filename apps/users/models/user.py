@@ -21,6 +21,12 @@ class User(AbstractUser):
         blank=True,
         validators=[phone_number_validator],
     )
+    deactivated_at = models.DateTimeField(
+        _("deactivated at"),
+        null=True,
+        blank=True,
+        db_index=True,
+    )
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["first_name", "last_name"]
 
