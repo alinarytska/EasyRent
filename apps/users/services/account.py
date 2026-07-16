@@ -36,3 +36,16 @@ def deactivate_user_account(user):
 
     logger.info("User account deactivated: user_id=%s", locked_user.pk)
     return locked_user
+
+
+def change_user_password(user, new_password):
+    with transaction.atomic():
+        locked_user = type(user).objects.select_for_update().get(pk=user.pk)
+
+        locked_user.set_password(new_password)
+        locked_user.save(update_fields=("password",))
+
+        _blacklist_user_tokens(locked_user)
+
+    logger.info("User password changed: user_id=%s", locked_user.pk)
+    return locked_user

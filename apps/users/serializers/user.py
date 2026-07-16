@@ -1,5 +1,6 @@
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.models import Group
+from django.core.exceptions import ValidationError as DjangoValidationError
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
@@ -95,6 +96,55 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
             "last_name",
             "phone_number",
         )
+
+
+class UserPasswordChangeSerializer(serializers.Serializer):
+    old_password = serializers.CharField(
+        write_only=True,
+        style={"input_type": "password"},
+    )
+    new_password = serializers.CharField(
+        write_only=True,
+        style={"input_type": "password"},
+    )
+    new_password_confirm = serializers.CharField(
+        write_only=True,
+        style={"input_type": "password"},
+    )
+
+    def validate(self, attrs):
+        user = self.context["request"].user
+        old_password = attrs["old_password"]
+        new_password = attrs["new_password"]
+        new_password_confirm = attrs["new_password_confirm"]
+
+        if not user.check_password(old_password):
+            raise serializers.ValidationError(
+                {"old_password": "Old password is incorrect."}
+            )
+
+        if new_password != new_password_confirm:
+            raise serializers.ValidationError(
+                {"new_password_confirm": "Passwords do not match."}
+            )
+
+        if old_password == new_password:
+            raise serializers.ValidationError(
+                {
+                    "new_password": (
+                        "New password must be different from old password."
+                    )
+                }
+            )
+
+        try:
+            validate_password(new_password, user=user)
+        except DjangoValidationError as error:
+            raise serializers.ValidationError(
+                {"new_password": list(error.messages)}
+            ) from error
+
+        return attrs
 
 
 class UserGroupAddSerializer(serializers.Serializer):

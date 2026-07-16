@@ -7,11 +7,12 @@ from rest_framework.response import Response
 from apps.users.models import User
 from apps.users.serializers import (
     UserGroupAddSerializer,
+    UserPasswordChangeSerializer,
     UserProfileUpdateSerializer,
     UserRegistrationSerializer,
     UserSerializer,
 )
-from apps.users.services import deactivate_user_account
+from apps.users.services import change_user_password, deactivate_user_account
 
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
@@ -71,6 +72,23 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         user = serializer.save()
         response_serializer = self.get_serializer(user)
         return Response(response_serializer.data)
+
+    @extend_schema(
+        request=UserPasswordChangeSerializer,
+        responses={status.HTTP_204_NO_CONTENT: None},
+    )
+    @action(detail=False, methods=("post",), url_path="me/change-password")
+    def change_password(self, request):
+        serializer = UserPasswordChangeSerializer(
+            data=request.data,
+            context={"request": request},
+        )
+        serializer.is_valid(raise_exception=True)
+        change_user_password(
+            user=request.user,
+            new_password=serializer.validated_data["new_password"],
+        )
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @extend_schema(
         request=UserRegistrationSerializer,

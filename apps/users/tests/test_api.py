@@ -1,4 +1,5 @@
 from django.contrib.auth.models import Group
+from django.core.cache import cache
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -6,6 +7,9 @@ from apps.users.models import User
 
 
 class UserRegistrationAPITests(APITestCase):
+    def setUp(self):
+        cache.clear()
+
     def test_user_can_register(self):
         response = self.client.post(
             "/api/v1/users/register/",
@@ -53,6 +57,7 @@ class UserRegistrationAPITests(APITestCase):
 
 class JWTAuthenticationAPITests(APITestCase):
     def setUp(self):
+        cache.clear()
         self.user = User.objects.create_user(
             email="auth@example.com",
             password="StrongPassword123!",
@@ -189,12 +194,23 @@ class JWTAuthenticationAPITests(APITestCase):
 
 class CurrentUserAPITests(APITestCase):
     def setUp(self):
+        cache.clear()
         self.user = User.objects.create_user(
             email="profile@example.com",
             password="strong-test-password",
             first_name="Anna",
             last_name="Smith",
             phone_number="+491234567890",
+        )
+
+    def obtain_tokens(self, password="strong-test-password"):
+        return self.client.post(
+            "/api/v1/auth/token/",
+            data={
+                "email": "profile@example.com",
+                "password": password,
+            },
+            format="json",
         )
 
     def test_user_can_get_current_profile(self):
@@ -318,6 +334,162 @@ class CurrentUserAPITests(APITestCase):
             refresh_response.status_code,
             status.HTTP_401_UNAUTHORIZED,
         )
+
+    def test_user_can_change_current_password(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.post(
+            "/api/v1/users/me/change-password/",
+            data={
+                "old_password": "strong-test-password",
+                "new_password": "NewStrongPassword123!",
+                "new_password_confirm": "NewStrongPassword123!",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(response.content, b"")
+
+        self.user.refresh_from_db()
+
+        self.assertFalse(self.user.check_password("strong-test-password"))
+        self.assertTrue(self.user.check_password("NewStrongPassword123!"))
+
+        self.client.force_authenticate(user=None)
+        old_password_response = self.obtain_tokens()
+        new_password_response = self.obtain_tokens(
+            password="NewStrongPassword123!",
+        )
+
+        self.assertEqual(
+            old_password_response.status_code,
+            status.HTTP_401_UNAUTHORIZED,
+        )
+        self.assertEqual(new_password_response.status_code, status.HTTP_200_OK)
+
+    def test_change_password_requires_correct_old_password(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.post(
+            "/api/v1/users/me/change-password/",
+            data={
+                "old_password": "wrong-password",
+                "new_password": "NewStrongPassword123!",
+                "new_password_confirm": "NewStrongPassword123!",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("old_password", response.data)
+
+        self.user.refresh_from_db()
+
+        self.assertTrue(self.user.check_password("strong-test-password"))
+
+    def test_change_password_requires_matching_passwords(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.post(
+            "/api/v1/users/me/change-password/",
+            data={
+                "old_password": "strong-test-password",
+                "new_password": "NewStrongPassword123!",
+                "new_password_confirm": "DifferentStrongPassword123!",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("new_password_confirm", response.data)
+
+        self.user.refresh_from_db()
+
+        self.assertTrue(self.user.check_password("strong-test-password"))
+
+    def test_change_password_rejects_same_password(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.post(
+            "/api/v1/users/me/change-password/",
+            data={
+                "old_password": "strong-test-password",
+                "new_password": "strong-test-password",
+                "new_password_confirm": "strong-test-password",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("new_password", response.data)
+
+        self.user.refresh_from_db()
+
+        self.assertTrue(self.user.check_password("strong-test-password"))
+
+    def test_change_password_rejects_weak_password(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.post(
+            "/api/v1/users/me/change-password/",
+            data={
+                "old_password": "strong-test-password",
+                "new_password": "123",
+                "new_password_confirm": "123",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("new_password", response.data)
+
+        self.user.refresh_from_db()
+
+        self.assertTrue(self.user.check_password("strong-test-password"))
+
+    def test_change_password_blacklists_existing_refresh_token(self):
+        token_response = self.obtain_tokens()
+        access_token = token_response.data["access"]
+        refresh_token = token_response.data["refresh"]
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {access_token}")
+
+        response = self.client.post(
+            "/api/v1/users/me/change-password/",
+            data={
+                "old_password": "strong-test-password",
+                "new_password": "NewStrongPassword123!",
+                "new_password_confirm": "NewStrongPassword123!",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+        self.client.credentials()
+        refresh_response = self.client.post(
+            "/api/v1/auth/token/refresh/",
+            data={"refresh": refresh_token},
+            format="json",
+        )
+
+        self.assertEqual(
+            refresh_response.status_code,
+            status.HTTP_401_UNAUTHORIZED,
+        )
+
+    def test_anonymous_user_cannot_change_password(self):
+        response = self.client.post(
+            "/api/v1/users/me/change-password/",
+            data={
+                "old_password": "strong-test-password",
+                "new_password": "NewStrongPassword123!",
+                "new_password_confirm": "NewStrongPassword123!",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
 
 class CurrentUserGroupAPITests(APITestCase):
