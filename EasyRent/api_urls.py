@@ -1,4 +1,5 @@
 from django.urls import include, path
+from django.views.generic import RedirectView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from apps.users.views import (
@@ -9,6 +10,11 @@ from apps.users.views import (
 
 
 urlpatterns = [
+    path(
+        "",
+        RedirectView.as_view(url="docs/", permanent=False),
+        name="api-v1-root-redirect",
+    ),
     path(
         "auth/token/",
         JWTTokenObtainPairView.as_view(),
