@@ -6,7 +6,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.bookings.models import Booking
-from apps.listings.models import Listing
+from apps.listings.models import Listing, ListingImage
 from apps.reviews.models import Review
 from apps.search_history.models import SearchHistory
 from apps.users.models import User
@@ -418,6 +418,14 @@ class ListingPermissionAPITests(APITestCase):
         self.assertIn(active_listing.id, listing_ids)
         self.assertNotIn(inactive_listing.id, listing_ids)
 
+    def test_public_listing_list_does_not_show_owner_email(self):
+        self.create_listing(owner=self.landlord)
+
+        response = self.client.get("/api/v1/listings/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertNotIn("owner_email", response.data["results"][0])
+
     def test_anonymous_user_can_retrieve_active_listing(self):
         listing = self.create_listing(owner=self.landlord)
 
@@ -425,6 +433,19 @@ class ListingPermissionAPITests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["id"], listing.id)
+
+    def test_public_listing_detail_does_not_show_owner_email(self):
+        listing = self.create_listing(owner=self.landlord)
+        ListingImage.objects.create(
+            listing=listing,
+            image="listings/test.jpg",
+        )
+
+        response = self.client.get(f"/api/v1/listings/{listing.id}/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertNotIn("owner_email", response.data)
+        self.assertNotIn("listing_owner_email", response.data["images"][0])
 
     def test_anonymous_user_cannot_retrieve_inactive_listing(self):
         listing = self.create_listing(
@@ -460,6 +481,18 @@ class ListingPermissionAPITests(APITestCase):
         listing_ids = [item["id"] for item in response.data["results"]]
         self.assertIn(inactive_listing.id, listing_ids)
         self.assertNotIn(other_inactive_listing.id, listing_ids)
+
+    def test_owner_can_see_owner_email_in_my_listings(self):
+        self.create_listing(owner=self.landlord)
+        self.client.force_authenticate(user=self.landlord)
+
+        response = self.client.get("/api/v1/listings/my/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            response.data["results"][0]["owner_email"],
+            self.landlord.email,
+        )
 
     def test_owner_can_retrieve_own_inactive_listing(self):
         listing = self.create_listing(

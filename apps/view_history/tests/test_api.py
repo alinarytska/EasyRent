@@ -167,3 +167,12 @@ class ViewHistoryAPITests(APITestCase):
         first_result = response.data["results"][0]
         self.assertEqual(first_result["id"], self.listing.id)
         self.assertEqual(first_result["views_count"], 2)
+
+    def test_popular_listings_do_not_show_owner_email(self):
+        ViewHistory.objects.create(user=self.viewer, listing=self.listing)
+        self.client.force_authenticate(user=self.viewer)
+
+        response = self.client.get("/api/v1/view-history/popular-listings/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertNotIn("owner_email", response.data["results"][0])

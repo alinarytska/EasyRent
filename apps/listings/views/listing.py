@@ -10,7 +10,7 @@ from apps.common.mixins import ProtectedDestroyMixin
 from apps.listings.filters import ListingFilter
 from apps.listings.models import Listing
 from apps.listings.permissions import ListingPermission
-from apps.listings.serializers import ListingSerializer
+from apps.listings.serializers import ListingSerializer, PublicListingSerializer
 from apps.reviews.serializers import ReviewSerializer
 from apps.reviews.services import get_reviews_for_listing
 from apps.search_history.services import record_listing_search
@@ -40,6 +40,12 @@ class ListingViewSet(ProtectedDestroyMixin, viewsets.ModelViewSet):
         "created_at",
     )
     ordering = ("-created_at",)
+
+    def get_serializer_class(self):
+        if getattr(self, "action", None) in ("list", "retrieve", "popular"):
+            return PublicListingSerializer
+
+        return ListingSerializer
 
     def get_queryset(self):
         queryset = (

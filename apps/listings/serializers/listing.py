@@ -1,7 +1,10 @@
 from rest_framework import serializers
 
 from apps.listings.models import Listing
-from apps.listings.serializers.listing_image import ListingImageSerializer
+from apps.listings.serializers.listing_image import (
+    ListingImageSerializer,
+    PublicListingImageSerializer,
+)
 
 
 class ListingSerializer(serializers.ModelSerializer):
@@ -68,3 +71,20 @@ class ListingSerializer(serializers.ModelSerializer):
                 )
 
         return attrs
+
+
+class PublicListingSerializer(ListingSerializer):
+    owner_email = None
+    images = PublicListingImageSerializer(many=True, read_only=True)
+
+    class Meta(ListingSerializer.Meta):
+        fields = tuple(
+            field
+            for field in ListingSerializer.Meta.fields
+            if field != "owner_email"
+        )
+        read_only_fields = tuple(
+            field
+            for field in ListingSerializer.Meta.read_only_fields
+            if field != "owner_email"
+        )

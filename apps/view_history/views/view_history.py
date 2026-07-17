@@ -5,7 +5,7 @@ from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter
 from rest_framework.response import Response
 
-from apps.listings.serializers import ListingSerializer
+from apps.listings.serializers import PublicListingSerializer
 from apps.view_history.filters import ViewHistoryFilter
 from apps.view_history.models import ViewHistory
 from apps.view_history.serializers import ViewHistorySerializer
@@ -32,7 +32,7 @@ class ViewHistoryViewSet(viewsets.ReadOnlyModelViewSet):
 
         return queryset.filter(user=self.request.user)
 
-    @extend_schema(responses=ListingSerializer(many=True))
+    @extend_schema(responses=PublicListingSerializer(many=True))
     @action(
         detail=False,
         methods=("get",),
@@ -47,8 +47,8 @@ class ViewHistoryViewSet(viewsets.ReadOnlyModelViewSet):
         page = self.paginate_queryset(queryset)
 
         if page is not None:
-            serializer = ListingSerializer(page, many=True)
+            serializer = PublicListingSerializer(page, many=True)
             return self.get_paginated_response(serializer.data)
 
-        serializer = ListingSerializer(queryset, many=True)
+        serializer = PublicListingSerializer(queryset, many=True)
         return Response(serializer.data)

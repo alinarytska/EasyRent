@@ -72,3 +72,19 @@ class ListingImageSerializer(serializers.ModelSerializer):
                 )
 
         return attrs
+
+
+class PublicListingImageSerializer(ListingImageSerializer):
+    listing_owner_email = None
+
+    class Meta(ListingImageSerializer.Meta):
+        fields = tuple(
+            field
+            for field in ListingImageSerializer.Meta.fields
+            if field != "listing_owner_email"
+        )
+        read_only_fields = tuple(
+            field
+            for field in ListingImageSerializer.Meta.read_only_fields
+            if field != "listing_owner_email"
+        )
