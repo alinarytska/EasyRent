@@ -5,6 +5,7 @@ from apps.listings.models import Listing, ListingImage
 
 @admin.register(Listing)
 class ListingAdmin(admin.ModelAdmin):
+    list_select_related = ("owner",)
     list_display = (
         "title",
         "owner",
@@ -19,12 +20,14 @@ class ListingAdmin(admin.ModelAdmin):
     search_fields = ("title", "description", "city", "district")
     autocomplete_fields = ("owner",)
     readonly_fields = ("created_at", "updated_at")
+    date_hierarchy = "created_at"
 
 
 @admin.register(ListingImage)
 class ListingImageAdmin(admin.ModelAdmin):
     list_display = (
         "listing",
+        "image",
         "is_primary",
         "position",
         "uploaded_at",

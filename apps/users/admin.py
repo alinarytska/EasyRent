@@ -7,6 +7,7 @@ from apps.users.models import User
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
     ordering = ("email",)
+    date_hierarchy = "date_joined"
     list_display = (
         "email",
         "first_name",
