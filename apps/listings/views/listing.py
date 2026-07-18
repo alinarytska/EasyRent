@@ -1,5 +1,5 @@
 from django.db.models import Count, Q
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
@@ -17,7 +17,44 @@ from apps.search_history.services import record_listing_search
 from apps.view_history.services import get_popular_listings, record_listing_view
 
 
+@extend_schema_view(
+    list=extend_schema(
+        summary="List active listings",
+        description=(
+            "Return a paginated public catalog of active rental listings. "
+            "Authenticated searches are saved to the user's search history."
+        ),
+    ),
+    retrieve=extend_schema(
+        summary="Retrieve listing details",
+        description=(
+            "Return details for one active listing. Authenticated views are "
+            "saved to the user's view history."
+        ),
+    ),
+    create=extend_schema(
+        summary="Create listing",
+        description="Create a new listing for the authenticated landlord.",
+    ),
+    update=extend_schema(
+        summary="Replace listing",
+        description="Replace an existing listing owned by the authenticated landlord.",
+    ),
+    partial_update=extend_schema(
+        summary="Update listing",
+        description="Partially update an existing listing owned by the authenticated landlord.",
+    ),
+    destroy=extend_schema(
+        summary="Delete listing",
+        description=(
+            "Delete a listing only when it is safe to remove. Listings with "
+            "bookings should be deactivated instead."
+        ),
+    ),
+)
 class ListingViewSet(ProtectedDestroyMixin, viewsets.ModelViewSet):
+    """API endpoints for listing CRUD, search, filtering and popularity."""
+
     serializer_class = ListingSerializer
     permission_classes = (ListingPermission,)
     protected_destroy_error_message = (
@@ -98,7 +135,11 @@ class ListingViewSet(ProtectedDestroyMixin, viewsets.ModelViewSet):
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
-    @extend_schema(responses=ReviewSerializer(many=True))
+    @extend_schema(
+        summary="List listing reviews",
+        description="Return all reviews connected to completed bookings for this listing.",
+        responses=ReviewSerializer(many=True),
+    )
     @action(detail=True, methods=("get",), url_path="reviews")
     def reviews(self, request, pk=None):
         listing = self.get_object()
@@ -112,6 +153,10 @@ class ListingViewSet(ProtectedDestroyMixin, viewsets.ModelViewSet):
         serializer = ReviewSerializer(queryset, many=True)
         return Response(serializer.data)
 
+    @extend_schema(
+        summary="List my listings",
+        description="Return listings owned by the authenticated landlord, including inactive ones.",
+    )
     @action(detail=False, methods=("get",), url_path="my")
     def my_listings(self, request):
         queryset = self.filter_queryset(
@@ -127,6 +172,10 @@ class ListingViewSet(ProtectedDestroyMixin, viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
+    @extend_schema(
+        summary="List popular listings",
+        description="Return active listings ordered by recorded view count.",
+    )
     @action(
         detail=False,
         methods=("get",),

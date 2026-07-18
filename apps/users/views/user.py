@@ -1,5 +1,5 @@
 from django.utils import timezone
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
@@ -21,7 +21,19 @@ from apps.users.services import (
 )
 
 
+@extend_schema_view(
+    list=extend_schema(
+        summary="List visible users",
+        description="Return the authenticated user's own profile record.",
+    ),
+    retrieve=extend_schema(
+        summary="Retrieve visible user",
+        description="Return a user profile only when it belongs to the authenticated user.",
+    ),
+)
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
+    """API endpoints for user profile, registration and account self-service."""
+
     serializer_class = UserSerializer
     throttle_scope = None
 
@@ -34,14 +46,23 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
 
         return queryset.filter(pk=user.pk)
 
-    @extend_schema(methods=("GET",), responses=UserSerializer)
+    @extend_schema(
+        methods=("GET",),
+        summary="Retrieve current user",
+        description="Return profile information for the authenticated user.",
+        responses=UserSerializer,
+    )
     @extend_schema(
         methods=("PATCH",),
+        summary="Update current user",
+        description="Partially update the authenticated user's profile.",
         request=UserProfileUpdateSerializer,
         responses=UserSerializer,
     )
     @extend_schema(
         methods=("DELETE",),
+        summary="Deactivate current user",
+        description="Soft-deactivate the authenticated user account.",
         responses={status.HTTP_204_NO_CONTENT: None},
     )
     @action(detail=False, methods=("get", "patch", "delete"), url_path="me")
@@ -65,6 +86,8 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(serializer.data)
 
     @extend_schema(
+        summary="Add rental group",
+        description="Add Renters or Landlords group to the authenticated user.",
         request=UserGroupAddSerializer,
         responses=UserSerializer,
     )
@@ -80,6 +103,8 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(response_serializer.data)
 
     @extend_schema(
+        summary="Change password",
+        description="Change the authenticated user's password after validating the old password.",
         request=UserPasswordChangeSerializer,
         responses={status.HTTP_204_NO_CONTENT: None},
     )
@@ -97,6 +122,8 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @extend_schema(
+        summary="Reactivate account",
+        description="Reactivate a recently deactivated account within the recovery period.",
         request=UserReactivationSerializer,
         responses=UserSerializer,
     )
@@ -118,6 +145,8 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(response_serializer.data)
 
     @extend_schema(
+        summary="Register user",
+        description="Create a new user account using email and password.",
         request=UserRegistrationSerializer,
         responses={status.HTTP_201_CREATED: UserSerializer},
     )

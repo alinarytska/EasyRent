@@ -4,11 +4,22 @@ from apps.listings.models import ListingImage
 
 
 class ListingImageSerializer(serializers.ModelSerializer):
-    listing_title = serializers.CharField(source="listing.title", read_only=True)
-    listing_owner = serializers.IntegerField(source="listing.owner_id", read_only=True)
+    """Serializer for managing images attached to listing objects."""
+
+    listing_title = serializers.CharField(
+        source="listing.title",
+        read_only=True,
+        help_text="Title of the listing this image belongs to.",
+    )
+    listing_owner = serializers.IntegerField(
+        source="listing.owner_id",
+        read_only=True,
+        help_text="ID of the user who owns the related listing.",
+    )
     listing_owner_email = serializers.EmailField(
         source="listing.owner.email",
         read_only=True,
+        help_text="Email of the related listing owner. Visible only in owner-facing responses.",
     )
 
     class Meta:
@@ -31,6 +42,12 @@ class ListingImageSerializer(serializers.ModelSerializer):
             "listing_owner_email",
             "uploaded_at",
         )
+        extra_kwargs = {
+            "listing": {"help_text": "Listing ID to which the image belongs."},
+            "image": {"help_text": "Uploaded image file for the listing."},
+            "is_primary": {"help_text": "Marks this image as the main image for the listing."},
+            "position": {"help_text": "Display order of the image within the listing gallery."},
+        }
 
     def validate(self, attrs):
         listing = attrs.get(
@@ -75,6 +92,8 @@ class ListingImageSerializer(serializers.ModelSerializer):
 
 
 class PublicListingImageSerializer(ListingImageSerializer):
+    """Public image representation without listing owner email."""
+
     listing_owner_email = None
 
     class Meta(ListingImageSerializer.Meta):

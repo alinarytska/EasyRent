@@ -5,10 +5,26 @@ from apps.view_history.models import ViewHistory
 
 
 class ViewHistorySerializer(serializers.ModelSerializer):
-    user = serializers.PrimaryKeyRelatedField(read_only=True)
-    user_email = serializers.EmailField(source="user.email", read_only=True)
-    listing = serializers.PrimaryKeyRelatedField(queryset=Listing.objects.active())
-    listing_title = serializers.CharField(source="listing.title", read_only=True)
+    """Read-only serializer for listings viewed by the current user."""
+
+    user = serializers.PrimaryKeyRelatedField(
+        read_only=True,
+        help_text="ID of the user who viewed the listing.",
+    )
+    user_email = serializers.EmailField(
+        source="user.email",
+        read_only=True,
+        help_text="Email of the user who viewed the listing.",
+    )
+    listing = serializers.PrimaryKeyRelatedField(
+        queryset=Listing.objects.active(),
+        help_text="ID of the viewed listing.",
+    )
+    listing_title = serializers.CharField(
+        source="listing.title",
+        read_only=True,
+        help_text="Title of the viewed listing.",
+    )
 
     class Meta:
         model = ViewHistory

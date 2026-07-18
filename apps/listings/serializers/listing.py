@@ -8,10 +8,26 @@ from apps.listings.serializers.listing_image import (
 
 
 class ListingSerializer(serializers.ModelSerializer):
-    owner = serializers.PrimaryKeyRelatedField(read_only=True)
-    owner_email = serializers.EmailField(source="owner.email", read_only=True)
-    images = ListingImageSerializer(many=True, read_only=True)
-    views_count = serializers.IntegerField(read_only=True)
+    """Full listing representation used for owners and write operations."""
+
+    owner = serializers.PrimaryKeyRelatedField(
+        read_only=True,
+        help_text="ID of the landlord who owns the listing.",
+    )
+    owner_email = serializers.EmailField(
+        source="owner.email",
+        read_only=True,
+        help_text="Email of the listing owner. Visible only in owner-facing responses.",
+    )
+    images = ListingImageSerializer(
+        many=True,
+        read_only=True,
+        help_text="Images attached to the listing.",
+    )
+    views_count = serializers.IntegerField(
+        read_only=True,
+        help_text="Number of recorded authenticated user views.",
+    )
 
     class Meta:
         model = Listing
@@ -44,6 +60,19 @@ class ListingSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         )
+        extra_kwargs = {
+            "title": {"help_text": "Short public title of the rental listing."},
+            "description": {"help_text": "Detailed public description of the property."},
+            "property_type": {"help_text": "Type of property: apartment, house, studio or room."},
+            "price_per_night": {"help_text": "Price for one night in the listing currency."},
+            "rooms": {"help_text": "Number of rooms available in the property."},
+            "city": {"help_text": "City where the property is located."},
+            "district": {"help_text": "Optional city district or neighborhood."},
+            "postal_code": {"help_text": "Five-digit postal code."},
+            "street": {"help_text": "Street name of the property."},
+            "house_number": {"help_text": "House number of the property."},
+            "is_active": {"help_text": "Whether the listing is publicly visible and bookable."},
+        }
 
     def validate(self, attrs):
         if (
@@ -74,6 +103,8 @@ class ListingSerializer(serializers.ModelSerializer):
 
 
 class PublicListingSerializer(ListingSerializer):
+    """Public listing representation without the owner's email address."""
+
     owner_email = None
     images = PublicListingImageSerializer(many=True, read_only=True)
 
