@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.utils import timezone
 from rest_framework import serializers
 
@@ -6,22 +8,44 @@ from apps.bookings.services import calculate_booking_prices
 from apps.listings.models import Listing
 
 
+MAX_BOOKING_DAYS_AHEAD = 365
+
+
 class BookingSerializer(serializers.ModelSerializer):
+    """Serializer for creating, viewing and updating booking requests."""
+
     listing = serializers.PrimaryKeyRelatedField(
         queryset=Listing.objects.active(),
+        help_text="ID of the active listing to book.",
     )
-    listing_title = serializers.CharField(source="listing.title", read_only=True)
+    listing_title = serializers.CharField(
+        source="listing.title",
+        read_only=True,
+        help_text="Title of the booked listing.",
+    )
     listing_owner = serializers.IntegerField(
         source="listing.owner_id",
         read_only=True,
+        help_text="ID of the landlord who owns the booked listing.",
     )
     listing_owner_email = serializers.EmailField(
         source="listing.owner.email",
         read_only=True,
+        help_text="Email of the landlord who owns the booked listing.",
     )
-    renter = serializers.PrimaryKeyRelatedField(read_only=True)
-    renter_email = serializers.EmailField(source="renter.email", read_only=True)
-    number_of_nights = serializers.IntegerField(read_only=True)
+    renter = serializers.PrimaryKeyRelatedField(
+        read_only=True,
+        help_text="ID of the user who created the booking.",
+    )
+    renter_email = serializers.EmailField(
+        source="renter.email",
+        read_only=True,
+        help_text="Email of the user who created the booking.",
+    )
+    number_of_nights = serializers.IntegerField(
+        read_only=True,
+        help_text="Calculated number of nights between start and end date.",
+    )
 
     class Meta:
         model = Booking
@@ -56,6 +80,18 @@ class BookingSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         )
+        extra_kwargs = {
+            "start_date": {
+                "help_text": (
+                    "First day of the stay. It cannot be in the past or more "
+                    f"than {MAX_BOOKING_DAYS_AHEAD} days ahead."
+                )
+            },
+            "end_date": {"help_text": "Checkout date. Must be after start_date."},
+            "price_per_night": {"help_text": "Snapshot of listing price at booking time."},
+            "total_price": {"help_text": "Calculated total booking price."},
+            "status": {"help_text": "Current booking workflow status."},
+        }
 
     def validate(self, attrs):
         listing = attrs.get(
@@ -91,6 +127,20 @@ class BookingSerializer(serializers.ModelSerializer):
         if start_date and start_date < timezone.localdate():
             raise serializers.ValidationError(
                 {"start_date": "Start date cannot be in the past."}
+            )
+
+        latest_start_date = timezone.localdate() + timedelta(
+            days=MAX_BOOKING_DAYS_AHEAD,
+        )
+
+        if start_date and start_date > latest_start_date:
+            raise serializers.ValidationError(
+                {
+                    "start_date": (
+                        "Start date cannot be more than "
+                        f"{MAX_BOOKING_DAYS_AHEAD} days ahead."
+                    )
+                }
             )
 
         request = self.context.get("request")

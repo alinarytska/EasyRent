@@ -180,6 +180,44 @@ class BookingPermissionAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("start_date", response.data)
 
+    def test_user_cannot_create_booking_too_far_in_future(self):
+        too_far_start_date = timezone.localdate() + timedelta(days=366)
+        too_far_end_date = too_far_start_date + timedelta(days=3)
+        self.client.force_authenticate(user=self.renter)
+
+        response = self.client.post(
+            "/api/v1/bookings/",
+            data=self.build_booking_payload(
+                start_date=too_far_start_date.isoformat(),
+                end_date=too_far_end_date.isoformat(),
+            ),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("start_date", response.data)
+        self.assertFalse(
+            Booking.objects.filter(
+                renter=self.renter,
+                start_date=too_far_start_date,
+            ).exists()
+        )
+
+    def test_user_cannot_force_confirmed_status_on_booking_creation(self):
+        self.client.force_authenticate(user=self.renter)
+
+        response = self.client.post(
+            "/api/v1/bookings/",
+            data=self.build_booking_payload(status=Booking.Status.CONFIRMED),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["status"], Booking.Status.PENDING)
+
+        booking = Booking.objects.get(pk=response.data["id"])
+        self.assertEqual(booking.status, Booking.Status.PENDING)
+
     def test_user_cannot_create_overlapping_booking(self):
         self.create_booking(status=Booking.Status.CONFIRMED)
         self.client.force_authenticate(user=self.renter)
@@ -470,6 +508,23 @@ class BookingPermissionAPITests(APITestCase):
 
         self.assertEqual(booking.status, Booking.Status.CANCELLED)
 
+    def test_renter_can_cancel_own_confirmed_booking_before_deadline(self):
+        booking = self.create_booking(
+            status=Booking.Status.CONFIRMED,
+            start_date=timezone.localdate() + timedelta(days=3),
+            end_date=timezone.localdate() + timedelta(days=5),
+        )
+        self.client.force_authenticate(user=self.renter)
+
+        response = self.client.post(f"/api/v1/bookings/{booking.id}/cancel/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["status"], Booking.Status.CANCELLED)
+
+        booking.refresh_from_db()
+
+        self.assertEqual(booking.status, Booking.Status.CANCELLED)
+
     def test_renter_cannot_cancel_booking_too_late(self):
         booking = self.create_booking(
             status=Booking.Status.PENDING,
@@ -512,3 +567,16 @@ class BookingPermissionAPITests(APITestCase):
         booking.refresh_from_db()
 
         self.assertEqual(booking.status, Booking.Status.COMPLETED)
+
+    def test_reject_requires_pending_booking(self):
+        booking = self.create_booking(status=Booking.Status.CONFIRMED)
+        self.client.force_authenticate(user=self.landlord)
+
+        response = self.client.post(f"/api/v1/bookings/{booking.id}/reject/")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("status", response.data)
+
+        booking.refresh_from_db()
+
+        self.assertEqual(booking.status, Booking.Status.CONFIRMED)
