@@ -4,20 +4,25 @@ from django.utils.translation import gettext_lazy as _
 
 
 class ViewHistory(models.Model):
+    """Last recorded view of a listing by a user."""
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="view_history",
+        help_text=_("User who viewed the listing."),
     )
     listing = models.ForeignKey(
         "listings.Listing",
         on_delete=models.CASCADE,
         related_name="view_history",
+        help_text=_("Listing viewed by the user."),
     )
     viewed_at = models.DateTimeField(
         _("viewed at"),
         auto_now=True,
         db_index=True,
+        help_text=_("Date and time of the latest recorded view."),
     )
 
     class Meta:

@@ -16,6 +16,8 @@ MAX_ROOMS = 50
 
 
 class Listing(BaseModel):
+    """Rental property published by a landlord and available for booking."""
+
     class PropertyType(models.TextChoices):
         APARTMENT = "apartment", _("Apartment")
         HOUSE = "house", _("House")
@@ -26,14 +28,23 @@ class Listing(BaseModel):
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name="listings",
+        help_text=_("Landlord who owns this listing."),
     )
-    title = models.CharField(_("title"), max_length=200)
-    description = models.TextField(_("description"))
+    title = models.CharField(
+        _("title"),
+        max_length=200,
+        help_text=_("Short public title of the rental property."),
+    )
+    description = models.TextField(
+        _("description"),
+        help_text=_("Detailed public description of the rental property."),
+    )
     property_type = models.CharField(
         _("property type"),
         max_length=20,
         choices=PropertyType.choices,
         db_index=True,
+        help_text=_("Type of rental property."),
     )
     price_per_night = models.DecimalField(
         _("price per night"),
@@ -43,6 +54,7 @@ class Listing(BaseModel):
             MinValueValidator(MIN_PRICE_PER_NIGHT),
         ],
         db_index=True,
+        help_text=_("Current price for one night."),
     )
     rooms = models.PositiveSmallIntegerField(
         _("rooms"),
@@ -51,13 +63,20 @@ class Listing(BaseModel):
             MaxValueValidator(MAX_ROOMS),
         ],
         db_index=True,
+        help_text=_("Number of rooms in the rental property."),
     )
-    city = models.CharField(_("city"), max_length=100, db_index=True)
+    city = models.CharField(
+        _("city"),
+        max_length=100,
+        db_index=True,
+        help_text=_("City where the listing is located."),
+    )
     district = models.CharField(
         _("district"),
         max_length=100,
         blank=True,
         db_index=True,
+        help_text=_("District or neighborhood where the listing is located."),
     )
     postal_code = models.CharField(
         _("postal code"),
@@ -68,10 +87,24 @@ class Listing(BaseModel):
                 message="Postal code must contain exactly 5 digits.",
             )
         ],
+        help_text=_("Five-digit postal code."),
     )
-    street = models.CharField(_("street"), max_length=150)
-    house_number = models.CharField(_("house number"), max_length=20)
-    is_active = models.BooleanField(_("active"), default=True, db_index=True)
+    street = models.CharField(
+        _("street"),
+        max_length=150,
+        help_text=_("Street name of the rental property."),
+    )
+    house_number = models.CharField(
+        _("house number"),
+        max_length=20,
+        help_text=_("House or building number of the rental property."),
+    )
+    is_active = models.BooleanField(
+        _("active"),
+        default=True,
+        db_index=True,
+        help_text=_("Controls whether the listing is visible in the public catalog."),
+    )
 
     objects = ListingManager()
 

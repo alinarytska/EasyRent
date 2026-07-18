@@ -8,6 +8,8 @@ from apps.listings.validators import validate_listing_image_size
 
 
 def listing_image_upload_path(instance, filename):
+    """Build a unique storage path for an uploaded listing image."""
+
     extension = Path(filename).suffix.lower()
     unique_filename = f"{uuid4().hex}{extension}"
 
@@ -15,10 +17,13 @@ def listing_image_upload_path(instance, filename):
 
 
 class ListingImage(models.Model):
+    """Image attached to a listing with optional primary-image ordering."""
+
     listing = models.ForeignKey(
         "listings.Listing",
         on_delete=models.CASCADE,
         related_name="images",
+        help_text=_("Listing this image belongs to."),
     )
     primary_listing = models.ForeignKey(
         "listings.Listing",
@@ -27,23 +32,28 @@ class ListingImage(models.Model):
         blank=True,
         editable=False,
         related_name="+",
+        help_text=_("Internal helper field used to enforce one primary image."),
     )
     image = models.ImageField(
         _("image"),
         upload_to=listing_image_upload_path,
         validators=[validate_listing_image_size],
+        help_text=_("Uploaded image file for the listing."),
     )
     is_primary = models.BooleanField(
         _("primary image"),
         default=False,
+        help_text=_("Marks this image as the main listing photo."),
     )
     position = models.PositiveSmallIntegerField(
         _("position"),
         default=0,
+        help_text=_("Display order among listing images."),
     )
     uploaded_at = models.DateTimeField(
         _("uploaded at"),
         auto_now_add=True,
+        help_text=_("Date and time when the image was uploaded."),
     )
 
     class Meta:

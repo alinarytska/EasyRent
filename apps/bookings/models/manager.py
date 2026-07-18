@@ -2,6 +2,8 @@ from django.db import models
 
 
 class BookingQuerySet(models.QuerySet):
+    """Reusable queryset filters for booking status and date availability."""
+
     def pending(self):
         return self.filter(status=self.model.Status.PENDING)
 
@@ -39,4 +41,6 @@ class BookingQuerySet(models.QuerySet):
 
 
 class BookingManager(models.Manager.from_queryset(BookingQuerySet)):
+    """Manager exposing booking-specific queryset helpers."""
+
     pass
