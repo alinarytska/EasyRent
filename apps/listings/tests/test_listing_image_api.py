@@ -1,6 +1,7 @@
 from decimal import Decimal
 import shutil
 import tempfile
+from urllib.parse import urlparse
 
 from django.contrib.auth.models import Group
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -97,6 +98,34 @@ class ListingImagePermissionAPITests(APITestCase):
         self.assertEqual(response.data["listing"], self.listing.id)
         self.assertEqual(response.data["listing_owner"], self.owner.id)
         self.assertEqual(self.listing.images.count(), 1)
+
+    def test_uploaded_image_file_is_served_by_media_url(self):
+        uploaded_image = self.create_uploaded_image("served-image.gif")
+        expected_content = uploaded_image.read()
+        uploaded_image.seek(0)
+        self.client.force_authenticate(user=self.owner)
+
+        response = self.client.post(
+            "/api/v1/listings/images/",
+            data={
+                "listing": self.listing.id,
+                "image": uploaded_image,
+            },
+            format="multipart",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        image_path = urlparse(response.data["image"]).path
+        media_response = self.client.get(image_path)
+        response_content = (
+            b"".join(media_response.streaming_content)
+            if getattr(media_response, "streaming", False)
+            else media_response.content
+        )
+
+        self.assertEqual(media_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response_content, expected_content)
 
     def test_anonymous_user_cannot_add_image(self):
         response = self.client.post(
