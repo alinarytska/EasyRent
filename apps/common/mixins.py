@@ -4,6 +4,8 @@ from rest_framework.response import Response
 
 
 class ProtectedDestroyMixin:
+    """Return a clear API error when database protection blocks deletion."""
+
     protected_destroy_error_message = (
         "This object cannot be deleted because it is used by other records."
     )

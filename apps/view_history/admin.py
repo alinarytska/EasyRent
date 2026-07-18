@@ -5,6 +5,8 @@ from apps.view_history.models import ViewHistory
 
 @admin.register(ViewHistory)
 class ViewHistoryAdmin(admin.ModelAdmin):
+    """Read-only admin configuration for listing view history."""
+
     list_display = ("user", "listing", "viewed_at")
     list_select_related = ("user", "listing")
     list_filter = ("viewed_at",)

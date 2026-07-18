@@ -4,6 +4,8 @@ from apps.bookings.models import Booking
 
 
 class BookingFilter(django_filters.FilterSet):
+    """Filter bookings by status, users, dates and total price range."""
+
     start_after = django_filters.DateFilter(
         field_name="start_date",
         lookup_expr="gte",

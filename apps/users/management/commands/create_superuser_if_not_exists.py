@@ -4,6 +4,8 @@ from apps.users.models import User
 
 
 class Command(BaseCommand):
+    """Create an initial superuser from environment variables."""
+
     help = "Create a Django superuser from environment variables if it does not exist."
 
     def handle(self, *args, **options):

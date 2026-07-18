@@ -5,6 +5,8 @@ from apps.listings.models import Listing, ListingImage
 
 @admin.register(Listing)
 class ListingAdmin(admin.ModelAdmin):
+    """Admin configuration for managing rental listings."""
+
     list_select_related = ("owner",)
     list_display = (
         "title",
@@ -25,6 +27,8 @@ class ListingAdmin(admin.ModelAdmin):
 
 @admin.register(ListingImage)
 class ListingImageAdmin(admin.ModelAdmin):
+    """Admin configuration for managing listing images."""
+
     list_display = (
         "listing",
         "image",

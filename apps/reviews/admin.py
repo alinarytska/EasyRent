@@ -5,6 +5,8 @@ from apps.reviews.models import Review
 
 @admin.register(Review)
 class ReviewAdmin(admin.ModelAdmin):
+    """Admin configuration for inspecting renter reviews."""
+
     list_display = (
         "booking",
         "author",

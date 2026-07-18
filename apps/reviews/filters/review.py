@@ -4,6 +4,8 @@ from apps.reviews.models import Review
 
 
 class ReviewFilter(django_filters.FilterSet):
+    """Filter reviews by rating, booking, listing, author and creation date."""
+
     min_rating = django_filters.NumberFilter(
         field_name="rating",
         lookup_expr="gte",

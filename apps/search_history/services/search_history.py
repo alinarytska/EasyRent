@@ -16,6 +16,13 @@ IGNORED_SEARCH_HISTORY_PARAMS = {
 
 
 def build_search_filters(query_params):
+    """
+    Build a JSON-safe filter snapshot from listing query parameters.
+
+    Technical parameters such as pagination, ordering and the search keyword are
+    ignored. The result stores only meaningful filters used with the search.
+    """
+
     search_filters = {}
 
     for key in query_params:
@@ -37,6 +44,13 @@ def build_search_filters(query_params):
 
 
 def record_listing_search(user, query_params):
+    """
+    Save an authenticated user's keyword listing search.
+
+    Anonymous users are ignored. Searches without a non-empty keyword are also
+    ignored, because popular search statistics are based on actual query text.
+    """
+
     if not user.is_authenticated:
         return None
 
@@ -61,6 +75,13 @@ def record_listing_search(user, query_params):
 
 
 def get_popular_search_queries():
+    """
+    Return search keywords ordered by how often they were recorded.
+
+    The queryset groups history rows by query text and exposes search_count for
+    popular-search endpoints.
+    """
+
     from apps.search_history.models import SearchHistory
 
     return (

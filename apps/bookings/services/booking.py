@@ -14,6 +14,13 @@ logger = logging.getLogger(__name__)
 
 
 def calculate_booking_prices(listing, start_date, end_date):
+    """
+    Calculate immutable booking price snapshots from listing and dates.
+
+    The booking stores price_per_night and total_price separately so later
+    listing price changes do not affect already created bookings.
+    """
+
     number_of_nights = (end_date - start_date).days
 
     if number_of_nights <= 0:
@@ -31,6 +38,14 @@ def validate_booking_dates_are_available(
     end_date,
     exclude_booking_id=None,
 ):
+    """
+    Raise an API validation error when selected dates overlap bookings.
+
+    Pending and confirmed bookings are treated as blocking because both reserve
+    listing dates. The queryset uses row locking inside transactions to reduce
+    the risk of concurrent double-booking.
+    """
+
     overlapping_bookings = (
         Booking.objects.blocking()
         .select_for_update()
@@ -60,6 +75,13 @@ def validate_booking_dates_are_available(
 
 @transaction.atomic
 def create_booking(serializer, renter):
+    """
+    Create a booking inside a transaction and store price snapshots.
+
+    The related listing is locked before availability is checked. This keeps the
+    date-overlap check and booking creation in one atomic operation.
+    """
+
     listing = serializer.validated_data["listing"]
     start_date = serializer.validated_data["start_date"]
     end_date = serializer.validated_data["end_date"]
@@ -93,6 +115,13 @@ def create_booking(serializer, renter):
 
 @transaction.atomic
 def update_booking(serializer):
+    """
+    Update a pending booking while preserving availability guarantees.
+
+    Only pending bookings can be changed. Dates are rechecked against blocking
+    bookings and price snapshots are recalculated from the locked listing.
+    """
+
     if serializer.instance.status != Booking.Status.PENDING:
         raise APIValidationError(
             {"status": "Only pending bookings can be updated."}
@@ -143,6 +172,13 @@ def update_booking_status(
     allowed_statuses,
     error_message,
 ):
+    """
+    Move a booking to a new status when the transition is allowed.
+
+    Status changes go through this helper so confirm, reject and cancel actions
+    follow the same validation and logging path.
+    """
+
     if booking.status not in allowed_statuses:
         raise APIValidationError({"status": error_message})
 
@@ -158,6 +194,8 @@ def update_booking_status(
 
 
 def confirm_booking(booking):
+    """Confirm a pending booking."""
+
     return update_booking_status(
         booking=booking,
         new_status=Booking.Status.CONFIRMED,
@@ -167,6 +205,8 @@ def confirm_booking(booking):
 
 
 def reject_booking(booking):
+    """Reject a pending booking."""
+
     return update_booking_status(
         booking=booking,
         new_status=Booking.Status.REJECTED,
@@ -176,6 +216,13 @@ def reject_booking(booking):
 
 
 def validate_renter_cancellation_deadline(booking, user):
+    """
+    Ensure renters cancel bookings at least 24 hours before start date.
+
+    Staff users and listing owners are allowed to bypass this renter deadline,
+    because their cancellation flow is treated as administrative management.
+    """
+
     if user.is_staff:
         return
 
@@ -196,6 +243,8 @@ def validate_renter_cancellation_deadline(booking, user):
 
 
 def cancel_booking(booking, user):
+    """Cancel a pending or confirmed booking when the user is allowed."""
+
     validate_renter_cancellation_deadline(booking=booking, user=user)
 
     return update_booking_status(
