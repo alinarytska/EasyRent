@@ -7,6 +7,7 @@ from apps.users.models import User
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
     ordering = ("email",)
+    date_hierarchy = "date_joined"
     list_display = (
         "email",
         "first_name",
@@ -16,14 +17,17 @@ class UserAdmin(BaseUserAdmin):
         "is_landlord",
         "is_staff",
         "is_active",
+        "deactivated_at",
     )
     list_filter = (
         "groups",
         "is_staff",
         "is_superuser",
         "is_active",
+        "deactivated_at",
     )
     search_fields = ("email", "first_name", "last_name", "phone_number")
+    readonly_fields = BaseUserAdmin.readonly_fields + ("deactivated_at",)
 
     fieldsets = (
         (None, {"fields": ("email", "password")}),
@@ -43,7 +47,10 @@ class UserAdmin(BaseUserAdmin):
                 )
             },
         ),
-        ("Important dates", {"fields": ("last_login", "date_joined")}),
+        (
+            "Important dates",
+            {"fields": ("last_login", "date_joined", "deactivated_at")},
+        ),
     )
     add_fieldsets = (
         (

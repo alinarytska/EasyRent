@@ -1,9 +1,12 @@
 from decimal import Decimal
 from pathlib import Path
+import shutil
+import tempfile
 
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase
+from django.db import IntegrityError, transaction
+from django.test import TestCase, override_settings
 
 from apps.listings.models import Listing, ListingImage
 from apps.listings.validators import MAX_LISTING_IMAGE_SIZE_BYTES
@@ -11,6 +14,19 @@ from apps.users.models import User
 
 
 class ListingImageModelTests(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls._media_root = tempfile.mkdtemp()
+        cls._override_settings = override_settings(MEDIA_ROOT=cls._media_root)
+        cls._override_settings.enable()
+        super().setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        cls._override_settings.disable()
+        shutil.rmtree(cls._media_root, ignore_errors=True)
+
     @classmethod
     def setUpTestData(cls):
         cls.owner = User.objects.create_user(
@@ -102,6 +118,21 @@ class ListingImageModelTests(TestCase):
             [primary_image, second_image, last_image],
         )
 
+    def test_listing_can_have_only_one_primary_image(self):
+        ListingImage.objects.create(
+            listing=self.listing,
+            image="primary.jpg",
+            is_primary=True,
+        )
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                ListingImage.objects.create(
+                    listing=self.listing,
+                    image="another-primary.jpg",
+                    is_primary=True,
+                )
+
     def test_upload_path_contains_listing_id_and_unique_file_name(self):
         listing_image = ListingImage(listing=self.listing)
         image_field = ListingImage._meta.get_field("image")
@@ -125,3 +156,66 @@ class ListingImageModelTests(TestCase):
         )
 
         self.assertIn(str(self.listing), str(listing_image))
+
+    def test_image_file_is_deleted_from_storage_when_record_is_deleted(self):
+        listing_image = ListingImage.objects.create(
+            listing=self.listing,
+            image=SimpleUploadedFile(
+                "delete-me.jpg",
+                b"old-image-content",
+                content_type="image/jpeg",
+            ),
+        )
+        image_path = Path(listing_image.image.path)
+
+        self.assertTrue(image_path.exists())
+
+        with self.captureOnCommitCallbacks(execute=True):
+            listing_image.delete()
+
+        self.assertFalse(image_path.exists())
+
+    def test_old_image_file_is_deleted_from_storage_when_image_is_replaced(self):
+        listing_image = ListingImage.objects.create(
+            listing=self.listing,
+            image=SimpleUploadedFile(
+                "old-image.jpg",
+                b"old-image-content",
+                content_type="image/jpeg",
+            ),
+        )
+        old_image_path = Path(listing_image.image.path)
+
+        self.assertTrue(old_image_path.exists())
+
+        with self.captureOnCommitCallbacks(execute=True):
+            listing_image.image = SimpleUploadedFile(
+                "new-image.jpg",
+                b"new-image-content",
+                content_type="image/jpeg",
+            )
+            listing_image.save()
+
+        listing_image.refresh_from_db()
+        new_image_path = Path(listing_image.image.path)
+
+        self.assertFalse(old_image_path.exists())
+        self.assertTrue(new_image_path.exists())
+
+    def test_image_file_is_deleted_when_listing_is_deleted(self):
+        listing_image = ListingImage.objects.create(
+            listing=self.listing,
+            image=SimpleUploadedFile(
+                "cascade-delete.jpg",
+                b"image-content",
+                content_type="image/jpeg",
+            ),
+        )
+        image_path = Path(listing_image.image.path)
+
+        self.assertTrue(image_path.exists())
+
+        with self.captureOnCommitCallbacks(execute=True):
+            self.listing.delete()
+
+        self.assertFalse(image_path.exists())

@@ -1,7 +1,10 @@
 from rest_framework import serializers
 
 from apps.listings.models import Listing
-from apps.listings.serializers.listing_image import ListingImageSerializer
+from apps.listings.serializers.listing_image import (
+    ListingImageSerializer,
+    PublicListingImageSerializer,
+)
 
 
 class ListingSerializer(serializers.ModelSerializer):
@@ -40,4 +43,48 @@ class ListingSerializer(serializers.ModelSerializer):
             "views_count",
             "created_at",
             "updated_at",
+        )
+
+    def validate(self, attrs):
+        if (
+            self.instance
+            and self.instance.is_active
+            and attrs.get("is_active") is False
+        ):
+            from apps.bookings.models import Booking
+
+            has_active_bookings = self.instance.bookings.filter(
+                status__in=(
+                    Booking.Status.PENDING,
+                    Booking.Status.CONFIRMED,
+                )
+            ).exists()
+
+            if has_active_bookings:
+                raise serializers.ValidationError(
+                    {
+                        "is_active": (
+                            "Listing cannot be deactivated while it has "
+                            "pending or confirmed bookings."
+                        )
+                    }
+                )
+
+        return attrs
+
+
+class PublicListingSerializer(ListingSerializer):
+    owner_email = None
+    images = PublicListingImageSerializer(many=True, read_only=True)
+
+    class Meta(ListingSerializer.Meta):
+        fields = tuple(
+            field
+            for field in ListingSerializer.Meta.fields
+            if field != "owner_email"
+        )
+        read_only_fields = tuple(
+            field
+            for field in ListingSerializer.Meta.read_only_fields
+            if field != "owner_email"
         )

@@ -1,4 +1,3 @@
-from django.db.models import Count
 from drf_spectacular.utils import extend_schema
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
@@ -12,10 +11,12 @@ from apps.search_history.serializers import (
     PopularSearchQuerySerializer,
     SearchHistorySerializer,
 )
+from apps.search_history.services import get_popular_search_queries
 
 
-class SearchHistoryViewSet(viewsets.ModelViewSet):
+class SearchHistoryViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = SearchHistorySerializer
+    throttle_scope = "history"
     filter_backends = (DjangoFilterBackend, OrderingFilter)
     filterset_class = SearchHistoryFilter
     ordering_fields = (
@@ -32,13 +33,14 @@ class SearchHistoryViewSet(viewsets.ModelViewSet):
         return SearchHistory.objects.filter(user=self.request.user)
 
     @extend_schema(responses=PopularSearchQuerySerializer(many=True))
-    @action(detail=False, methods=("get",), url_path="popular")
+    @action(
+        detail=False,
+        methods=("get",),
+        url_path="popular",
+        throttle_scope="popular",
+    )
     def popular_queries(self, request):
-        queryset = (
-            SearchHistory.objects.values("query")
-            .annotate(search_count=Count("id"))
-            .order_by("-search_count", "query")
-        )
+        queryset = get_popular_search_queries()
         page = self.paginate_queryset(queryset)
 
         if page is not None:
@@ -47,6 +49,3 @@ class SearchHistoryViewSet(viewsets.ModelViewSet):
 
         serializer = PopularSearchQuerySerializer(queryset, many=True)
         return Response(serializer.data)
-
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)

@@ -1,0 +1,17 @@
+.git
+.idea
+.venv
+.agents
+.codex
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+db.sqlite3
+.env
+.env.docker
+.env.docker.example
+media/
+logs/
+staticfiles/

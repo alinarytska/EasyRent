@@ -1,19 +1,32 @@
 from django.db import transaction
 from django.db.models import Q
+from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter
 from rest_framework.response import Response
 
+from apps.common.mixins import ProtectedDestroyMixin
 from apps.bookings.filters import BookingFilter
 from apps.bookings.models import Booking
+from apps.bookings.permissions import BookingPermission
 from apps.bookings.serializers import BookingSerializer
-from apps.bookings.services import calculate_booking_prices
+from apps.bookings.services import (
+    cancel_booking,
+    confirm_booking,
+    create_booking,
+    reject_booking,
+    update_booking,
+)
 
 
-class BookingViewSet(viewsets.ModelViewSet):
+class BookingViewSet(ProtectedDestroyMixin, viewsets.ModelViewSet):
     serializer_class = BookingSerializer
+    permission_classes = (BookingPermission,)
+    protected_destroy_error_message = (
+        "Booking with a review cannot be deleted."
+    )
     filter_backends = (DjangoFilterBackend, OrderingFilter)
     filterset_class = BookingFilter
     ordering_fields = (
@@ -35,9 +48,6 @@ class BookingViewSet(viewsets.ModelViewSet):
         if not user.is_authenticated:
             return queryset.none()
 
-        if user.is_staff:
-            return queryset
-
         return queryset.filter(
             Q(renter=user) | Q(listing__owner=user),
         ).distinct()
@@ -56,44 +66,45 @@ class BookingViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
+    def get_locked_booking(self):
+        queryset = self.filter_queryset(
+            self.get_queryset().select_for_update(),
+        )
+        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
+        lookup_value = self.kwargs[lookup_url_kwarg]
+        booking = get_object_or_404(
+            queryset,
+            **{self.lookup_field: lookup_value},
+        )
+        self.check_object_permissions(self.request, booking)
+        return booking
+
     @transaction.atomic
+    @action(detail=True, methods=("post",), url_path="confirm")
+    def confirm(self, request, pk=None):
+        booking = self.get_locked_booking()
+        booking = confirm_booking(booking)
+        serializer = self.get_serializer(booking)
+        return Response(serializer.data)
+
+    @transaction.atomic
+    @action(detail=True, methods=("post",), url_path="reject")
+    def reject(self, request, pk=None):
+        booking = self.get_locked_booking()
+        booking = reject_booking(booking)
+        serializer = self.get_serializer(booking)
+        return Response(serializer.data)
+
+    @transaction.atomic
+    @action(detail=True, methods=("post",), url_path="cancel")
+    def cancel(self, request, pk=None):
+        booking = self.get_locked_booking()
+        booking = cancel_booking(booking=booking, user=request.user)
+        serializer = self.get_serializer(booking)
+        return Response(serializer.data)
+
     def perform_create(self, serializer):
-        listing = serializer.validated_data["listing"]
-        start_date = serializer.validated_data["start_date"]
-        end_date = serializer.validated_data["end_date"]
-        price_per_night, total_price = calculate_booking_prices(
-            listing=listing,
-            start_date=start_date,
-            end_date=end_date,
-        )
+        create_booking(serializer=serializer, renter=self.request.user)
 
-        serializer.save(
-            renter=self.request.user,
-            price_per_night=price_per_night,
-            total_price=total_price,
-        )
-
-    @transaction.atomic
     def perform_update(self, serializer):
-        listing = serializer.validated_data.get(
-            "listing",
-            serializer.instance.listing,
-        )
-        start_date = serializer.validated_data.get(
-            "start_date",
-            serializer.instance.start_date,
-        )
-        end_date = serializer.validated_data.get(
-            "end_date",
-            serializer.instance.end_date,
-        )
-        price_per_night, total_price = calculate_booking_prices(
-            listing=listing,
-            start_date=start_date,
-            end_date=end_date,
-        )
-
-        serializer.save(
-            price_per_night=price_per_night,
-            total_price=total_price,
-        )
+        update_booking(serializer=serializer)

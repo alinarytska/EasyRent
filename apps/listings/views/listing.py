@@ -1,17 +1,29 @@
-from django.db.models import Count
+from django.db.models import Count, Q
+from drf_spectacular.utils import extend_schema
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.response import Response
 from rest_framework import viewsets
 
+from apps.common.mixins import ProtectedDestroyMixin
 from apps.listings.filters import ListingFilter
 from apps.listings.models import Listing
-from apps.listings.serializers import ListingSerializer
+from apps.listings.permissions import ListingPermission
+from apps.listings.serializers import ListingSerializer, PublicListingSerializer
+from apps.reviews.serializers import ReviewSerializer
+from apps.reviews.services import get_reviews_for_listing
+from apps.search_history.services import record_listing_search
+from apps.view_history.services import get_popular_listings, record_listing_view
 
 
-class ListingViewSet(viewsets.ModelViewSet):
+class ListingViewSet(ProtectedDestroyMixin, viewsets.ModelViewSet):
     serializer_class = ListingSerializer
+    permission_classes = (ListingPermission,)
+    protected_destroy_error_message = (
+        "Listing with bookings cannot be deleted. Deactivate it instead."
+    )
+    throttle_scope = "listings"
     filter_backends = (DjangoFilterBackend, SearchFilter, OrderingFilter)
     filterset_class = ListingFilter
     search_fields = (
@@ -29,16 +41,76 @@ class ListingViewSet(viewsets.ModelViewSet):
     )
     ordering = ("-created_at",)
 
+    def get_serializer_class(self):
+        if getattr(self, "action", None) in ("list", "retrieve", "popular"):
+            return PublicListingSerializer
+
+        return ListingSerializer
+
     def get_queryset(self):
-        return (
+        queryset = (
             Listing.objects.select_related("owner")
             .prefetch_related("images")
             .annotate(views_count=Count("view_history"))
             .all()
         )
+        user = self.request.user
+        action = getattr(self, "action", None)
+
+        if action == "my_listings":
+            return queryset
+
+        if not user.is_authenticated:
+            return queryset.active()
+
+        if action in (
+            "retrieve",
+            "update",
+            "partial_update",
+            "destroy",
+            "reviews",
+        ):
+            return queryset.filter(
+                Q(is_active=True) | Q(owner=user),
+            )
+
+        return queryset.active()
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
+
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        record_listing_search(
+            user=request.user,
+            query_params=request.query_params,
+        )
+
+        return response
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        record_listing_view(user=request.user, listing=instance)
+
+        if hasattr(instance, "views_count"):
+            instance.views_count = instance.view_history.count()
+
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
+    @extend_schema(responses=ReviewSerializer(many=True))
+    @action(detail=True, methods=("get",), url_path="reviews")
+    def reviews(self, request, pk=None):
+        listing = self.get_object()
+        queryset = get_reviews_for_listing(listing)
+        page = self.paginate_queryset(queryset)
+
+        if page is not None:
+            serializer = ReviewSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = ReviewSerializer(queryset, many=True)
+        return Response(serializer.data)
 
     @action(detail=False, methods=("get",), url_path="my")
     def my_listings(self, request):
@@ -55,9 +127,14 @@ class ListingViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
-    @action(detail=False, methods=("get",), url_path="popular")
+    @action(
+        detail=False,
+        methods=("get",),
+        url_path="popular",
+        throttle_scope="popular",
+    )
     def popular(self, request):
-        queryset = self.get_queryset().order_by("-views_count", "-created_at")
+        queryset = get_popular_listings(active_only=True)
         page = self.paginate_queryset(queryset)
 
         if page is not None:

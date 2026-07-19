@@ -1,3 +1,4 @@
+from django.utils import timezone
 from rest_framework import serializers
 
 from apps.bookings.models import Booking
@@ -70,12 +71,35 @@ class BookingSerializer(serializers.ModelSerializer):
             self.instance.end_date if self.instance else None,
         )
 
+        if self.instance and "listing" in attrs:
+            if listing != self.instance.listing:
+                raise serializers.ValidationError(
+                    {
+                        "listing": (
+                            "Listing cannot be changed after booking creation."
+                        )
+                    }
+                )
+
         if start_date and end_date:
             calculate_booking_prices(
                 listing=listing,
                 start_date=start_date,
                 end_date=end_date,
             )
+
+        if start_date and start_date < timezone.localdate():
+            raise serializers.ValidationError(
+                {"start_date": "Start date cannot be in the past."}
+            )
+
+        request = self.context.get("request")
+
+        if not self.instance and request and listing:
+            if listing.owner_id == request.user.id:
+                raise serializers.ValidationError(
+                    {"listing": "You cannot book your own listing."}
+                )
 
         if listing and start_date and end_date:
             overlapping_bookings = (
