@@ -8,7 +8,6 @@ from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter
 from rest_framework.response import Response
 
-from apps.common.mixins import ProtectedDestroyMixin
 from apps.bookings.filters import BookingFilter
 from apps.bookings.models import Booking
 from apps.bookings.permissions import BookingPermission
@@ -43,19 +42,13 @@ from apps.bookings.services import (
         summary="Update pending booking",
         description="Partially update dates for a pending booking only.",
     ),
-    destroy=extend_schema(
-        summary="Delete booking",
-        description="Delete a booking only when it has no protected related data such as reviews.",
-    ),
 )
-class BookingViewSet(ProtectedDestroyMixin, viewsets.ModelViewSet):
+class BookingViewSet(viewsets.ModelViewSet):
     """API endpoints for booking creation, visibility and status transitions."""
 
     serializer_class = BookingSerializer
     permission_classes = (BookingPermission,)
-    protected_destroy_error_message = (
-        "Booking with a review cannot be deleted."
-    )
+    http_method_names = ("get", "post", "put", "patch", "head", "options")
     filter_backends = (DjangoFilterBackend, OrderingFilter)
     filterset_class = BookingFilter
     ordering_fields = (

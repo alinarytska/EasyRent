@@ -8,7 +8,6 @@ from rest_framework.test import APITestCase
 
 from apps.bookings.models import Booking
 from apps.listings.models import Listing
-from apps.reviews.models import Review
 from apps.users.models import User
 
 
@@ -386,30 +385,14 @@ class BookingPermissionAPITests(APITestCase):
         self.assertEqual(booking.end_date, date(2026, 8, 4))
         self.assertEqual(booking.total_price, Decimal("360.00"))
 
-    def test_listing_owner_can_delete_booking(self):
+    def test_listing_owner_cannot_delete_booking_directly(self):
         booking = self.create_booking()
         self.client.force_authenticate(user=self.landlord)
 
         response = self.client.delete(f"/api/v1/bookings/{booking.id}/")
 
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertFalse(Booking.objects.filter(pk=booking.pk).exists())
-
-    def test_listing_owner_cannot_delete_booking_with_review(self):
-        booking = self.create_booking(status=Booking.Status.COMPLETED)
-        review = Review.objects.create(
-            booking=booking,
-            rating=5,
-            comment="Excellent apartment.",
-        )
-        self.client.force_authenticate(user=self.landlord)
-
-        response = self.client.delete(f"/api/v1/bookings/{booking.id}/")
-
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("detail", response.data)
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
         self.assertTrue(Booking.objects.filter(pk=booking.pk).exists())
-        self.assertTrue(Review.objects.filter(pk=review.pk).exists())
 
     def test_renter_cannot_delete_booking_directly(self):
         booking = self.create_booking()
@@ -417,7 +400,7 @@ class BookingPermissionAPITests(APITestCase):
 
         response = self.client.delete(f"/api/v1/bookings/{booking.id}/")
 
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
         self.assertTrue(Booking.objects.filter(pk=booking.pk).exists())
 
     def test_listing_owner_can_confirm_pending_booking(self):
