@@ -256,7 +256,7 @@ class BookingPermissionAPITests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-    def test_listing_owner_can_update_booking(self):
+    def test_listing_owner_cannot_update_pending_booking_directly(self):
         booking = self.create_booking()
         self.client.force_authenticate(user=self.landlord)
 
@@ -266,15 +266,14 @@ class BookingPermissionAPITests(APITestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["total_price"], "480.00")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
         booking.refresh_from_db()
 
-        self.assertEqual(booking.end_date, date(2026, 8, 5))
-        self.assertEqual(booking.total_price, Decimal("480.00"))
+        self.assertEqual(booking.end_date, date(2026, 8, 4))
+        self.assertEqual(booking.total_price, Decimal("360.00"))
 
-    def test_listing_owner_cannot_change_booking_listing(self):
+    def test_renter_cannot_change_booking_listing(self):
         booking = self.create_booking()
         another_listing = self.create_listing(
             owner=self.landlord,
@@ -282,7 +281,7 @@ class BookingPermissionAPITests(APITestCase):
             street="Torstrasse",
             house_number="2",
         )
-        self.client.force_authenticate(user=self.landlord)
+        self.client.force_authenticate(user=self.renter)
 
         response = self.client.patch(
             f"/api/v1/bookings/{booking.id}/",
@@ -297,7 +296,7 @@ class BookingPermissionAPITests(APITestCase):
 
         self.assertEqual(booking.listing, self.listing)
 
-    def test_listing_owner_cannot_change_booking_listing_with_put(self):
+    def test_renter_cannot_change_booking_listing_with_put(self):
         booking = self.create_booking()
         another_listing = self.create_listing(
             owner=self.landlord,
@@ -305,7 +304,7 @@ class BookingPermissionAPITests(APITestCase):
             street="Torstrasse",
             house_number="2",
         )
-        self.client.force_authenticate(user=self.landlord)
+        self.client.force_authenticate(user=self.renter)
 
         response = self.client.put(
             f"/api/v1/bookings/{booking.id}/",
@@ -327,9 +326,9 @@ class BookingPermissionAPITests(APITestCase):
         self.assertEqual(booking.end_date, date(2026, 8, 4))
         self.assertEqual(booking.total_price, Decimal("360.00"))
 
-    def test_listing_owner_cannot_update_confirmed_booking_directly(self):
+    def test_renter_cannot_update_confirmed_booking_directly(self):
         booking = self.create_booking(status=Booking.Status.CONFIRMED)
-        self.client.force_authenticate(user=self.landlord)
+        self.client.force_authenticate(user=self.renter)
 
         response = self.client.patch(
             f"/api/v1/bookings/{booking.id}/",
@@ -345,9 +344,9 @@ class BookingPermissionAPITests(APITestCase):
         self.assertEqual(booking.end_date, date(2026, 8, 4))
         self.assertEqual(booking.total_price, Decimal("360.00"))
 
-    def test_listing_owner_cannot_update_confirmed_booking_with_put(self):
+    def test_renter_cannot_update_confirmed_booking_with_put(self):
         booking = self.create_booking(status=Booking.Status.CONFIRMED)
-        self.client.force_authenticate(user=self.landlord)
+        self.client.force_authenticate(user=self.renter)
 
         response = self.client.put(
             f"/api/v1/bookings/{booking.id}/",
@@ -368,7 +367,7 @@ class BookingPermissionAPITests(APITestCase):
         self.assertEqual(booking.end_date, date(2026, 8, 4))
         self.assertEqual(booking.total_price, Decimal("360.00"))
 
-    def test_renter_cannot_update_booking_directly(self):
+    def test_renter_can_update_own_pending_booking(self):
         booking = self.create_booking()
         self.client.force_authenticate(user=self.renter)
 
@@ -378,12 +377,13 @@ class BookingPermissionAPITests(APITestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["total_price"], "480.00")
 
         booking.refresh_from_db()
 
-        self.assertEqual(booking.end_date, date(2026, 8, 4))
-        self.assertEqual(booking.total_price, Decimal("360.00"))
+        self.assertEqual(booking.end_date, date(2026, 8, 5))
+        self.assertEqual(booking.total_price, Decimal("480.00"))
 
     def test_listing_owner_cannot_delete_booking_directly(self):
         booking = self.create_booking()
