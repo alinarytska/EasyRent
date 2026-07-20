@@ -261,6 +261,9 @@ Bookings:
 
 - `GET /api/v1/bookings/`
 - `POST /api/v1/bookings/`
+- `GET /api/v1/bookings/{id}/`
+- `PUT /api/v1/bookings/{id}/`
+- `PATCH /api/v1/bookings/{id}/`
 - `GET /api/v1/bookings/my/`
 - `POST /api/v1/bookings/{id}/confirm/`
 - `POST /api/v1/bookings/{id}/reject/`
@@ -277,7 +280,21 @@ History and popularity:
 - `GET /api/v1/search-history/`
 - `GET /api/v1/search-history/popular/`
 - `GET /api/v1/view-history/`
-- `GET /api/v1/view-history/popular-listings/`
+
+## Booking completion command
+
+The project includes a management command that marks confirmed bookings as
+completed after their checkout date:
+
+```bash
+python manage.py complete_expired_bookings
+```
+
+Inside Docker:
+
+```bash
+docker compose exec web python manage.py complete_expired_bookings
+```
 
 ## Listing filtering examples
 
@@ -319,7 +336,8 @@ GET /api/v1/listings/?ordering=-views_count
 - Listing owners can update or delete their own listings.
 - Only listing owners can manage listing images.
 - Only users in the `Renters` group can create bookings.
-- Landlords can confirm or reject bookings for their own listings.
+- Renters can update dates for their own pending bookings.
+- Landlords can confirm, reject or cancel bookings for their own listings.
 - Renters can cancel their own bookings before the cancellation deadline.
 - Reviews can be created only for the renter's own completed booking.
 - Search and view history are read-only for users and are created automatically.
@@ -342,7 +360,7 @@ docker compose exec web python manage.py test
 Current local verification:
 
 ```text
-207 tests passed
+The project includes more than 200 automated tests.
 python manage.py check passed
 python manage.py makemigrations --check --dry-run passed
 OpenAPI schema validation passed
@@ -363,4 +381,4 @@ fields for business objects that should be managed through the API.
 
 Docker Compose configuration is prepared for local containerized deployment.
 
-AWS EC2 deployment is planned as the final deployment target.
+The project is deployed on AWS EC2 using Docker.
