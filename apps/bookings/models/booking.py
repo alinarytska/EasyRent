@@ -14,6 +14,8 @@ MIN_BOOKING_PRICE = Decimal("0.01")
 
 
 class Booking(BaseModel):
+    """Reservation request for a listing made by a renter."""
+
     class Status(models.TextChoices):
         PENDING = "pending", _("Pending")
         CONFIRMED = "confirmed", _("Confirmed")
@@ -25,14 +27,24 @@ class Booking(BaseModel):
         "listings.Listing",
         on_delete=models.PROTECT,
         related_name="bookings",
+        help_text=_("Listing reserved by this booking."),
     )
     renter = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name="bookings",
+        help_text=_("User who created the booking."),
     )
-    start_date = models.DateField(_("start date"), db_index=True)
-    end_date = models.DateField(_("end date"), db_index=True)
+    start_date = models.DateField(
+        _("start date"),
+        db_index=True,
+        help_text=_("First day of the stay."),
+    )
+    end_date = models.DateField(
+        _("end date"),
+        db_index=True,
+        help_text=_("Checkout date; must be after the start date."),
+    )
     price_per_night = models.DecimalField(
         _("price per night"),
         max_digits=10,
@@ -41,6 +53,7 @@ class Booking(BaseModel):
             MinValueValidator(MIN_BOOKING_PRICE),
         ],
         editable=False,
+        help_text=_("Snapshot of the listing price when the booking was created."),
     )
     total_price = models.DecimalField(
         _("total price"),
@@ -50,6 +63,7 @@ class Booking(BaseModel):
             MinValueValidator(MIN_BOOKING_PRICE),
         ],
         editable=False,
+        help_text=_("Total booking price calculated from dates and nightly price."),
     )
     status = models.CharField(
         _("status"),
@@ -57,6 +71,7 @@ class Booking(BaseModel):
         choices=Status.choices,
         default=Status.PENDING,
         db_index=True,
+        help_text=_("Current booking workflow status."),
     )
 
     objects = BookingManager()

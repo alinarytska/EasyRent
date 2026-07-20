@@ -5,6 +5,8 @@ from apps.bookings.models import Booking
 
 @admin.register(Booking)
 class BookingAdmin(admin.ModelAdmin):
+    """Admin configuration for inspecting booking records."""
+
     list_display = (
         "listing",
         "renter",

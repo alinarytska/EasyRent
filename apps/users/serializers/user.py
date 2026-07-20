@@ -10,9 +10,19 @@ from apps.users.services import ACCOUNT_RECOVERY_PERIOD
 
 
 class UserSerializer(serializers.ModelSerializer):
-    can_rent = serializers.BooleanField(read_only=True)
-    can_create_listing = serializers.BooleanField(read_only=True)
-    rental_groups = serializers.SerializerMethodField()
+    """Public account serializer for the authenticated user's profile."""
+
+    can_rent = serializers.BooleanField(
+        read_only=True,
+        help_text="Whether the user belongs to the Renters group.",
+    )
+    can_create_listing = serializers.BooleanField(
+        read_only=True,
+        help_text="Whether the user belongs to the Landlords group.",
+    )
+    rental_groups = serializers.SerializerMethodField(
+        help_text="Rental-related Django groups assigned to the user.",
+    )
 
     class Meta:
         model = User
@@ -34,6 +44,13 @@ class UserSerializer(serializers.ModelSerializer):
             "can_create_listing",
             "date_joined",
         )
+        extra_kwargs = {
+            "email": {"help_text": "Unique email used for login."},
+            "first_name": {"help_text": "User first name."},
+            "last_name": {"help_text": "User last name."},
+            "phone_number": {"help_text": "Optional phone number in international format."},
+            "date_joined": {"help_text": "Date and time when the account was created."},
+        }
 
     @extend_schema_field(serializers.ListField(child=serializers.CharField()))
     def get_rental_groups(self, obj):
@@ -48,13 +65,17 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
+    """Serializer for creating a new user account."""
+
     password = serializers.CharField(
         write_only=True,
         style={"input_type": "password"},
+        help_text="Password for the new account.",
     )
     password_confirm = serializers.CharField(
         write_only=True,
         style={"input_type": "password"},
+        help_text="Password confirmation. Must match password.",
     )
 
     class Meta:
@@ -67,6 +88,12 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             "last_name",
             "phone_number",
         )
+        extra_kwargs = {
+            "email": {"help_text": "Unique email used for login."},
+            "first_name": {"help_text": "User first name."},
+            "last_name": {"help_text": "User last name."},
+            "phone_number": {"help_text": "Optional phone number in international format."},
+        }
 
     def validate(self, attrs):
         password = attrs["password"]
@@ -91,6 +118,8 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
 
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for updating the current user's profile."""
+
     class Meta:
         model = User
         fields = (
@@ -98,20 +127,30 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
             "last_name",
             "phone_number",
         )
+        extra_kwargs = {
+            "first_name": {"help_text": "Updated first name."},
+            "last_name": {"help_text": "Updated last name."},
+            "phone_number": {"help_text": "Updated phone number in international format."},
+        }
 
 
 class UserPasswordChangeSerializer(serializers.Serializer):
+    """Serializer for changing the current user's password."""
+
     old_password = serializers.CharField(
         write_only=True,
         style={"input_type": "password"},
+        help_text="Current password.",
     )
     new_password = serializers.CharField(
         write_only=True,
         style={"input_type": "password"},
+        help_text="New password.",
     )
     new_password_confirm = serializers.CharField(
         write_only=True,
         style={"input_type": "password"},
+        help_text="New password confirmation. Must match new_password.",
     )
 
     def validate(self, attrs):
@@ -150,10 +189,13 @@ class UserPasswordChangeSerializer(serializers.Serializer):
 
 
 class UserReactivationSerializer(serializers.Serializer):
-    email = serializers.EmailField()
+    """Serializer for restoring a recently deactivated account."""
+
+    email = serializers.EmailField(help_text="Email of the deactivated account.")
     password = serializers.CharField(
         write_only=True,
         style={"input_type": "password"},
+        help_text="Password of the deactivated account.",
     )
 
     def validate(self, attrs):
@@ -198,11 +240,14 @@ class UserReactivationSerializer(serializers.Serializer):
 
 
 class UserGroupAddSerializer(serializers.Serializer):
+    """Serializer for adding one rental group to the current user."""
+
     group = serializers.ChoiceField(
         choices=(
             User.RENTERS_GROUP,
             User.LANDLORDS_GROUP,
         ),
+        help_text="Group to add to the current user: Renters or Landlords.",
     )
 
     def update(self, instance, validated_data):

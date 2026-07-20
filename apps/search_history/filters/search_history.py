@@ -4,6 +4,8 @@ from apps.search_history.models import SearchHistory
 
 
 class SearchHistoryFilter(django_filters.FilterSet):
+    """Filter saved search history by keyword and creation date."""
+
     query = django_filters.CharFilter(
         field_name="query",
         lookup_expr="icontains",

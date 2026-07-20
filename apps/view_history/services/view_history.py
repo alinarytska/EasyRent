@@ -7,6 +7,13 @@ logger = logging.getLogger(__name__)
 
 
 def get_popular_listings(active_only=False, only_with_views=False):
+    """
+    Return listings annotated and ordered by authenticated view count.
+
+    View popularity is calculated from ViewHistory records, so only
+    authenticated user views contribute to the ranking.
+    """
+
     from apps.listings.models import Listing
 
     queryset = Listing.objects.active() if active_only else Listing.objects.all()
@@ -24,6 +31,13 @@ def get_popular_listings(active_only=False, only_with_views=False):
 
 
 def record_listing_view(user, listing, return_created=False):
+    """
+    Create or refresh a view-history entry for an authenticated user.
+
+    One record is kept per user and listing. Repeated views update viewed_at
+    instead of creating duplicates, which keeps history compact.
+    """
+
     if not user.is_authenticated:
         return None
 

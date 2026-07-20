@@ -2,6 +2,8 @@ from django.db import models
 
 
 class ListingQuerySet(models.QuerySet):
+    """Reusable queryset filters for listing visibility and ownership."""
+
     def active(self):
         return self.filter(is_active=True)
 
@@ -13,4 +15,6 @@ class ListingQuerySet(models.QuerySet):
 
 
 class ListingManager(models.Manager.from_queryset(ListingQuerySet)):
+    """Manager exposing listing-specific queryset helpers."""
+
     pass

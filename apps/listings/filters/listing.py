@@ -4,6 +4,8 @@ from apps.listings.models import Listing
 
 
 class ListingFilter(django_filters.FilterSet):
+    """Filter listings by location, property attributes, price and dates."""
+
     min_price = django_filters.NumberFilter(
         field_name="price_per_night",
         lookup_expr="gte",

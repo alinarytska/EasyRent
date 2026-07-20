@@ -1,4 +1,4 @@
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from rest_framework.decorators import action
@@ -14,7 +14,19 @@ from apps.search_history.serializers import (
 from apps.search_history.services import get_popular_search_queries
 
 
+@extend_schema_view(
+    list=extend_schema(
+        summary="List search history",
+        description="Return keyword searches automatically saved for the authenticated user.",
+    ),
+    retrieve=extend_schema(
+        summary="Retrieve search history entry",
+        description="Return one search history entry owned by the authenticated user.",
+    ),
+)
 class SearchHistoryViewSet(viewsets.ReadOnlyModelViewSet):
+    """Read-only endpoints for search history and popular search queries."""
+
     serializer_class = SearchHistorySerializer
     throttle_scope = "history"
     filter_backends = (DjangoFilterBackend, OrderingFilter)
@@ -32,7 +44,11 @@ class SearchHistoryViewSet(viewsets.ReadOnlyModelViewSet):
 
         return SearchHistory.objects.filter(user=self.request.user)
 
-    @extend_schema(responses=PopularSearchQuerySerializer(many=True))
+    @extend_schema(
+        summary="List popular search queries",
+        description="Return keyword queries ordered by search frequency.",
+        responses=PopularSearchQuerySerializer(many=True),
+    )
     @action(
         detail=False,
         methods=("get",),

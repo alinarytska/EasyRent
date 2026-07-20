@@ -5,6 +5,8 @@ from apps.search_history.models import SearchHistory
 
 @admin.register(SearchHistory)
 class SearchHistoryAdmin(admin.ModelAdmin):
+    """Read-only admin configuration for saved search history."""
+
     list_display = ("user", "query", "created_at")
     list_select_related = ("user",)
     list_filter = ("created_at",)

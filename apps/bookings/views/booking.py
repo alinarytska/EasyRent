@@ -1,6 +1,7 @@
 from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from rest_framework.decorators import action
@@ -21,7 +22,35 @@ from apps.bookings.services import (
 )
 
 
+@extend_schema_view(
+    list=extend_schema(
+        summary="List bookings",
+        description="Return bookings where the current user is renter or listing owner.",
+    ),
+    retrieve=extend_schema(
+        summary="Retrieve booking",
+        description="Return one booking visible to the current renter or listing owner.",
+    ),
+    create=extend_schema(
+        summary="Create booking",
+        description="Create a pending booking for an active listing.",
+    ),
+    update=extend_schema(
+        summary="Replace pending booking",
+        description="Replace dates for a pending booking. Confirmed and completed bookings cannot be edited.",
+    ),
+    partial_update=extend_schema(
+        summary="Update pending booking",
+        description="Partially update dates for a pending booking only.",
+    ),
+    destroy=extend_schema(
+        summary="Delete booking",
+        description="Delete a booking only when it has no protected related data such as reviews.",
+    ),
+)
 class BookingViewSet(ProtectedDestroyMixin, viewsets.ModelViewSet):
+    """API endpoints for booking creation, visibility and status transitions."""
+
     serializer_class = BookingSerializer
     permission_classes = (BookingPermission,)
     protected_destroy_error_message = (
@@ -52,6 +81,10 @@ class BookingViewSet(ProtectedDestroyMixin, viewsets.ModelViewSet):
             Q(renter=user) | Q(listing__owner=user),
         ).distinct()
 
+    @extend_schema(
+        summary="List my bookings",
+        description="Return bookings created by the authenticated renter.",
+    )
     @action(detail=False, methods=("get",), url_path="my")
     def my_bookings(self, request):
         queryset = self.filter_queryset(
@@ -80,6 +113,10 @@ class BookingViewSet(ProtectedDestroyMixin, viewsets.ModelViewSet):
         return booking
 
     @transaction.atomic
+    @extend_schema(
+        summary="Confirm booking",
+        description="Change a pending booking to confirmed. Only the listing owner can confirm.",
+    )
     @action(detail=True, methods=("post",), url_path="confirm")
     def confirm(self, request, pk=None):
         booking = self.get_locked_booking()
@@ -88,6 +125,10 @@ class BookingViewSet(ProtectedDestroyMixin, viewsets.ModelViewSet):
         return Response(serializer.data)
 
     @transaction.atomic
+    @extend_schema(
+        summary="Reject booking",
+        description="Change a pending booking to rejected. Only the listing owner can reject.",
+    )
     @action(detail=True, methods=("post",), url_path="reject")
     def reject(self, request, pk=None):
         booking = self.get_locked_booking()
@@ -96,6 +137,10 @@ class BookingViewSet(ProtectedDestroyMixin, viewsets.ModelViewSet):
         return Response(serializer.data)
 
     @transaction.atomic
+    @extend_schema(
+        summary="Cancel booking",
+        description="Cancel a pending or confirmed booking if the user is allowed to do so.",
+    )
     @action(detail=True, methods=("post",), url_path="cancel")
     def cancel(self, request, pk=None):
         booking = self.get_locked_booking()

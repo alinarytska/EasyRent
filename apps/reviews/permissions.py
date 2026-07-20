@@ -2,6 +2,8 @@ from rest_framework.permissions import SAFE_METHODS, BasePermission
 
 
 class ReviewPermission(BasePermission):
+    """Allow review changes only for the renter who wrote the review."""
+
     def has_permission(self, request, view):
         return request.user.is_authenticated
 

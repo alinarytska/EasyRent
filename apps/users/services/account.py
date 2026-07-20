@@ -28,6 +28,8 @@ def _blacklist_user_tokens(user):
 
 
 def deactivate_user_account(user):
+    """Soft-deactivate a user account and blacklist outstanding JWT tokens."""
+
     with transaction.atomic():
         locked_user = type(user).objects.select_for_update().get(pk=user.pk)
 
@@ -42,6 +44,8 @@ def deactivate_user_account(user):
 
 
 def reactivate_user_account(user):
+    """Reactivate a deactivated user account within the recovery period."""
+
     with transaction.atomic():
         locked_user = type(user).objects.select_for_update().get(pk=user.pk)
 
@@ -77,6 +81,8 @@ def reactivate_user_account(user):
 
 
 def change_user_password(user, new_password):
+    """Change a user's password and invalidate existing JWT refresh tokens."""
+
     with transaction.atomic():
         locked_user = type(user).objects.select_for_update().get(pk=user.pk)
 

@@ -7,6 +7,8 @@ MAX_LISTING_IMAGE_SIZE_BYTES = MAX_LISTING_IMAGE_SIZE_MB * 1024 * 1024
 
 
 def validate_listing_image_size(image):
+    """Validate that an uploaded listing image is below the size limit."""
+
     if image.size > MAX_LISTING_IMAGE_SIZE_BYTES:
         raise ValidationError(
             _(

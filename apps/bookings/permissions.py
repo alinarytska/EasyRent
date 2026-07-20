@@ -2,6 +2,8 @@ from rest_framework.permissions import SAFE_METHODS, BasePermission
 
 
 class BookingPermission(BasePermission):
+    """Allow renters to book and landlords to manage their listing bookings."""
+
     def has_permission(self, request, view):
         if request.method in SAFE_METHODS:
             return request.user.is_authenticated

@@ -6,4 +6,6 @@ from apps.listings.models import ListingImage
 
 @receiver(post_delete, sender=ListingImage)
 def delete_listing_image_file(sender, instance, **kwargs):
+    """Remove an uploaded image file after its ListingImage record is deleted."""
+
     instance.delete_file_from_storage()

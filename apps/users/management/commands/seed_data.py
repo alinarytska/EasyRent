@@ -59,6 +59,8 @@ SEARCH_QUERIES = (
 
 
 class Command(BaseCommand):
+    """Populate the database with realistic demo data for development."""
+
     help = "Seed database with demo EasyRent data."
 
     def add_arguments(self, parser):
