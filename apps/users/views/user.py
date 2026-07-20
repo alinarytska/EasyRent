@@ -1,11 +1,10 @@
 from django.utils import timezone
-from drf_spectacular.utils import extend_schema, extend_schema_view
+from drf_spectacular.utils import extend_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
-from apps.users.models import User
 from apps.users.serializers import (
     UserGroupAddSerializer,
     UserPasswordChangeSerializer,
@@ -21,30 +20,11 @@ from apps.users.services import (
 )
 
 
-@extend_schema_view(
-    list=extend_schema(
-        summary="List visible users",
-        description="Return the authenticated user's own profile record.",
-    ),
-    retrieve=extend_schema(
-        summary="Retrieve visible user",
-        description="Return a user profile only when it belongs to the authenticated user.",
-    ),
-)
-class UserViewSet(viewsets.ReadOnlyModelViewSet):
+class UserViewSet(viewsets.GenericViewSet):
     """API endpoints for user profile, registration and account self-service."""
 
     serializer_class = UserSerializer
     throttle_scope = None
-
-    def get_queryset(self):
-        queryset = User.objects.all()
-        user = self.request.user
-
-        if not user.is_authenticated:
-            return queryset.none()
-
-        return queryset.filter(pk=user.pk)
 
     @extend_schema(
         methods=("GET",),

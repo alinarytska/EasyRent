@@ -1,11 +1,11 @@
-from rest_framework.routers import DefaultRouter
+from rest_framework.routers import SimpleRouter
 
 from apps.users.views import UserViewSet
 
 
 app_name = "users"
 
-router = DefaultRouter()
+router = SimpleRouter()
 router.register("", UserViewSet, basename="user")
 
 urlpatterns = router.urls

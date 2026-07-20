@@ -265,6 +265,20 @@ class CurrentUserAPITests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
+    def test_user_list_endpoint_is_not_exposed(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get("/api/v1/users/")
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_user_detail_endpoint_is_not_exposed(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get(f"/api/v1/users/{self.user.id}/")
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
     def test_user_can_deactivate_current_account(self):
         self.user.groups.add(
             Group.objects.get(name=User.RENTERS_GROUP),
