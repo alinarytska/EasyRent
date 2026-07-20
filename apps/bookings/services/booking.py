@@ -13,6 +13,30 @@ from apps.listings.models import Listing
 logger = logging.getLogger(__name__)
 
 
+def complete_expired_bookings(today=None):
+    """
+    Mark confirmed bookings as completed after their checkout date.
+
+    The command layer can pass today explicitly in tests; production uses the
+    current local date.
+    """
+
+    today = today or timezone.localdate()
+    updated_count = Booking.objects.filter(
+        status=Booking.Status.CONFIRMED,
+        end_date__lte=today,
+    ).update(status=Booking.Status.COMPLETED, updated_at=timezone.now())
+
+    if updated_count:
+        logger.info(
+            "Expired bookings completed: count=%s date=%s",
+            updated_count,
+            today,
+        )
+
+    return updated_count
+
+
 def calculate_booking_prices(listing, start_date, end_date):
     """
     Calculate immutable booking price snapshots from listing and dates.

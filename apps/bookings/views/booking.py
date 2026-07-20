@@ -36,11 +36,17 @@ from apps.bookings.services import (
     ),
     update=extend_schema(
         summary="Replace pending booking",
-        description="Replace dates for a pending booking. Confirmed and completed bookings cannot be edited.",
+        description=(
+            "Replace dates for a pending booking. Only the booking renter can "
+            "edit dates. Confirmed and completed bookings cannot be edited."
+        ),
     ),
     partial_update=extend_schema(
         summary="Update pending booking",
-        description="Partially update dates for a pending booking only.",
+        description=(
+            "Partially update dates for a pending booking. Only the booking "
+            "renter can edit dates."
+        ),
     ),
 )
 class BookingViewSet(viewsets.ModelViewSet):
